@@ -1,0 +1,72 @@
+---
+title: "house_price"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Data load & Exploring
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+train <- read.csv("~/Github/kaggle_house_price/house-prices-advanced-regression-techniques/train.csv")
+test <- read.csv("~/Github/kaggle_house_price/house-prices-advanced-regression-techniques/test.csv")
+
+str(train)
+names(train)
+```
+
+```{r}
+test$SalePrice <- NA
+all <- rbind(train,test)
+names(all)
+```
+variable descriptions [link]()
+
+
+## attributes values & target variable
+
+# SalePrice - target variable
+
+```{r}
+summary(all$SalePrice)
+
+ggplot(all[!is.na(all$SalePrice),], aes(x=SalePrice)) +
+  geom_histogram(fill="red") +
+  scale_x_continuous(breaks = seq(0,800000, by=100000), labels = scales::comma) #library(scales)
+```
+
+SalePrice의 분포를 보면, right-skewed된 분포임을 알 수 있다. 분산 안정화를 위해 log를 취하여 그래프를 그려보면,
+
+
+```{r}
+summary(log(all$SalePrice))
+
+ggplot(all[!is.na(all$SalePrice),], aes(x=log(SalePrice))) +
+  geom_histogram(fill="red") +
+  scale_x_continuous(breaks = seq(10,15, by=0.25))
+```
+
+평균이 12.02이고 어느 쪽으로 skewed된 경향이 감소했음을 알 수 있었다.
+
+## attribute values
+
+이제 attribute values를 살펴보기 전에, 결측값이 존재하는지 아닌지 알아보았다.
+
+```{r}
+NAs <- function(df){
+  aa <- sapply(df, function(x){sum(is.na(x))})
+  return(sort(aa[which(aa>0)], decreasing = T))
+}
+
+NAs(all)
+
+```
+ 
+
+
