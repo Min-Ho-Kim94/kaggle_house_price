@@ -389,6 +389,39 @@ NAs(all)</code></pre>
 <p>invalid factor level, NA generated</p></li>
 </ul>
 <p>이거는 이미 PoolQC의 class가 factor이며, level이 EX, FA, Gd로 설정되있는 상태에서, None 이라는 새로운 level을 넣을 경우 에러로 뜬다. 따라서 처음 데이터를 불러올 때 “stringsAsFactors = F” 설정을 넣어 str class로 범주형 변수를 불러온다. (그 증거로, “stringsAsFactors = F” 없는 경우 str() 함수를 쓸 경우 범주형 변수가 Factor로 설정되는 반면, “stringsAsFactors = F” 있는 경우 범주형 변수가 str 형식으로 설정된다.) 그런 뒤 각 변수의 imputation과정을 거치고 factor로 바꿔준다.</p>
+<p>그런 뒤 새로 Factor로 변환시키는데, level을 지정해준다. 순서형 변수이므로 순서로 변환.</p>
+<pre class="r"><code>library(plyr)</code></pre>
+<pre><code>## -------------------------------------------------------------------------</code></pre>
+<pre><code>## You have loaded plyr after dplyr - this is likely to cause problems.
+## If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+## library(plyr); library(dplyr)</code></pre>
+<pre><code>## -------------------------------------------------------------------------</code></pre>
+<pre><code>## 
+## Attaching package: 'plyr'</code></pre>
+<pre><code>## The following objects are masked from 'package:dplyr':
+## 
+##     arrange, count, desc, failwith, id, mutate, rename, summarise,
+##     summarize</code></pre>
+<pre><code>## The following object is masked from 'package:purrr':
+## 
+##     compact</code></pre>
+<pre class="r"><code>Qualities &lt;- c('None'=0, 'Po'=1, &quot;Fa&quot;=2, &quot;TA&quot;=3, &quot;Gd&quot;=4, &quot;Ex&quot;=5)
+all$PoolQC &lt;- as.integer(revalue(all$PoolQC, replace=Qualities))</code></pre>
+<pre><code>## The following `from` values were not present in `x`: Po, TA</code></pre>
+<pre class="r"><code>table(all$PoolQC)</code></pre>
+<pre><code>## 
+##    0    2    4    5 
+## 2909    2    4    4</code></pre>
+<p>PoolArea 에 값이 있으면 PoolQC는 무조건 1 이상이어야 하지만, 0의 값을 갖는 값들이 있었다.</p>
+<pre class="r"><code>all[all$PoolArea&gt;0 &amp; all$PoolQC==0, c(&quot;PoolArea&quot;,&quot;PoolQC&quot;,&quot;OverallQual&quot;)]</code></pre>
+<pre><code>##      PoolArea PoolQC OverallQual
+## 2421      368      0           4
+## 2504      444      0           6
+## 2600      561      0           3</code></pre>
+<p>이를 보정해주었다. OverallQual은 집의 전반적인 퀄리티를 나타내는 변수로, 이를 이용해 적절하게 보정하였다.</p>
+<pre class="r"><code>all$PoolQC[2421] &lt;- 2
+all$PoolQC[2504] &lt;- 3
+all$PoolQC[2600] &lt;- 2</code></pre>
 </div>
 </div>
 </div>

@@ -96,6 +96,7 @@ all$PoolQC[is.na(all$PoolQC)] <- 'None'
 그런 뒤 새로 Factor로 변환시키는데, level을 지정해준다. 순서형 변수이므로 순서로 변환.
 
 ```{r}
+library(plyr)
 Qualities <- c('None'=0, 'Po'=1, "Fa"=2, "TA"=3, "Gd"=4, "Ex"=5)
 all$PoolQC <- as.integer(revalue(all$PoolQC, replace=Qualities))
 table(all$PoolQC)
