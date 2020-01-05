@@ -91,7 +91,7 @@ all$PoolQC[is.na(all$PoolQC)] <- 'None'
     invalid factor level, NA generated
     
 
-이거는 이미 PoolQC의 class가 factor이며, level이 EX, FA, Gd로 설정되있는 상태에서, None 이라는 새로운 level을 넣을 경우 에러로 뜬다. 따라서 처음 데이터를 불러올 때 "stringsAsFactors = F" 설정을 넣어 str class로 범주형 변수를 불러온다. (그 증거로, "stringsAsFactors = F" 없는 경우 str() 함수를 쓸 경우 범주형 변수가 Factor로 설정되는 반면, "stringsAsFactors = F" 있는 경우 범주형 변수가 str 형식으로 설정된다.) 그런 뒤 각 변수의 imputation과정을 거치고 factor로 바꿔준다.
+이거는 이미 PoolQC의 class가 factor이며, level이 Ex, Fa, Gd로 설정되있는 상태에서, None 이라는 새로운 level을 넣을 경우 에러로 뜬다. 따라서 처음 데이터를 불러올 때 "stringsAsFactors = F" 설정을 넣어 str class로 범주형 변수를 불러온다. (그 증거로, "stringsAsFactors = F" 없는 경우 str() 함수를 쓸 경우 범주형 변수가 Factor로 설정되는 반면, "stringsAsFactors = F" 있는 경우 범주형 변수가 str 형식으로 설정된다.) 그런 뒤 각 변수의 imputation과정을 거치고 factor로 바꿔준다.
 
 그런 뒤 새로 Factor로 변환시키는데, level을 지정해준다. 순서형 변수이므로 순서로 변환.
 
@@ -117,4 +117,35 @@ all$PoolQC[2504] <- 3
 all$PoolQC[2600] <- 2
 ```
  
+### Miscellaneous
 
+       Elev	Elevator
+       Gar2	2nd Garage (if not described in garage section)
+       Othr	Other
+       Shed	Shed (over 100 SF)
+       TenC	Tennis Court
+       NA	None
+
+```{r}
+all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
+all$MiscFeature <- as.factor(all$MiscFeature)
+
+
+ggplot(all[all$SalePrice,], aes(x=MiscFeature, y=SalePrice)) +
+  geom_bar(stat='summary', fun.y='median', fill='blue') +
+  scale_y_continuous(breaks = seq(0,80000, by=10000), labels = ::comma) +
+  geom_label(stat="count", aes(label=..count.., y=..count..))
+```
+
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
