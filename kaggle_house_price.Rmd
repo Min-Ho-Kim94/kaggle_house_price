@@ -130,14 +130,34 @@ all$PoolQC[2600] <- 2
 all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
 all$MiscFeature <- as.factor(all$MiscFeature)
 
-
-ggplot(all[all$SalePrice,], aes(x=MiscFeature, y=SalePrice)) +
+library(scales)
+ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='blue') +
-  scale_y_continuous(breaks = seq(0,80000, by=10000), labels = ::comma) +
+  scale_y_continuous(breaks = seq(0,800000, by=100000), labels = scales::comma) +
   geom_label(stat="count", aes(label=..count.., y=..count..))
+
 ```
 
 
+### Alley
+
+       Grvl	Gravel
+       Pave	Paved
+       NA 	No alley access
+
+```{r}
+all %>% group_by(Alley) %>% summarize(count = count(Alley))
+
+all[is.na(all$Alley),] <- 'None'
+all$Alley <- as.factor(all$Alley)
+
+ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
+  geom_bar(stat='summary', fun.y='median', fill='blue') +
+  scale_y_continuous(breaks=seq(0,200000, by=50000), labels = scales::comma)
+
+
+
+```
 
 
 
