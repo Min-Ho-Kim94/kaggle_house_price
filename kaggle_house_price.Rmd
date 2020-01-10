@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-```{r}
+```{r warning=TRUE}
 train <- read.csv("~/Github/kaggle_house_price/house-prices-advanced-regression-techniques/train.csv", stringsAsFactors = F)
 test <- read.csv("~/Github/kaggle_house_price/house-prices-advanced-regression-techniques/test.csv", stringsAsFactors = F)
 
@@ -193,7 +193,584 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=Fence, y=SalePrice)) +
 
 
 ```{r}
- 
+all %>% group_by(FireplaceQu) %>% summarize(count(FireplaceQu))
+all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
+# Qualities None   Po   Fa   TA   Gd   Ex 
+#                0    1    2    3    4    5 
+
+all$FireplaceQu <- as.factor(revalue(all$FireplaceQu , replace=Qualities))
 ```
  
- 
+```{r}
+ggplot(all[!is.na(all$SalePrice),], aes(x=FireplaceQu, y=SalePrice)) +
+  geom_bar(stat='summary', fun.y='median', fill='blue') +
+  scale_y_continuous(breaks=seq(0, 400000, by=50000), labels=comma)
+```
+
+### lot
+
+```{r}
+all %>% group_by(LotFrontage) %>% summarise(count(LotFrontage))
+```
+
+**LotFrontage: Linear feet of street connected to property**
+
+486 NAs. The most reasonable imputation seems to take the median per neigborhood.
+
+```{r}
+ggplot(all[!is.na(all$LotFrontage),], aes(x=as.factor(Neighborhood), y=LotFrontage)) +
+        geom_bar(stat='summary', fun.y = "median", fill='blue') +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r}
+for (i in 1:nrow(all)){
+        if(is.na(all$LotFrontage[i])){
+               all$LotFrontage[i] <- as.integer(median(all$LotFrontage[all$Neighborhood==all$Neighborhood[i]], na.rm=TRUE)) 
+        }
+}
+```
+
+**LotShape: General shape of property**
+
+No NAs. Values seem ordinal (Regular=best)
+
+       Reg	Regular	
+       IR1	Slightly irregular
+       IR2	Moderately Irregular
+       IR3	Irregular
+
+```{r}
+all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
+table(all$LotShape)
+sum(table(all$LotShape))
+```
+
+
+### Garage variables
+
+**Altogether, there are 7 variables related to garages**
+
+Two of those have one NA (GarageCars and GarageArea), one has 157 NAs (GarageType), 4 variables have 159 NAs. 
+
+First of all, I am going to replace all 159 missing **GarageYrBlt: Year garage was built** values with the values in YearBuilt (this is similar to YearRemodAdd, which also defaults to YearBuilt if no remodeling or additions).
+
+```{r}
+all$GarageYrBlt[is.na(all$GarageYrBlt)] <- all$YearBuilt[is.na(all$GarageYrBlt)]
+```
+
+As NAs mean 'No Garage' for character variables, I now want to find out where the differences between the 157 NA GarageType and the other 3 character variables with 159 NAs come from.
+
+```{r}
+#check if all 157 NAs are the same observations among the variables with 157/159 NAs
+length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageCond) & is.na(all$GarageQual)))
+
+#Find the 2 additional NAs
+kable(all[!is.na(all$GarageType) & is.na(all$GarageFinish), c('GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')])
+```
+
+The 157 NAs within GarageType all turn out to be NA in GarageCondition, GarageQuality, and GarageFinish as well. The differences are found in houses 2127 and 2577. As you can see, house 2127 actually does seem to have a Garage and house 2577 does not. Therefore, there should be 158 houses without a Garage. To fix house 2127, I will imputate the most common values (modes) for GarageCond, GarageQual, and GarageFinish.
+
+```{r}
+#Imputing modes.
+all$GarageCond[2127] <- names(sort(-table(all$GarageCond)))[1]
+all$GarageQual[2127] <- names(sort(-table(all$GarageQual)))[1]
+all$GarageFinish[2127] <- names(sort(-table(all$GarageFinish)))[1]
+
+#display "fixed" house
+kable(all[2127, c('GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')])
+```
+
+**GarageCars and GarageArea: Size of garage in car capacity and Size of garage in square** 
+
+Both have 1 NA. As you can see above, it is house 2577 for both variables. The problem probably occured as the GarageType for this house is "detached", while all other Garage-variables seem to indicate that this house has no Garage.
+
+```{r}
+#fixing 3 values for house 2577
+all$GarageCars[2577] <- 0
+all$GarageArea[2577] <- 0
+all$GarageType[2577] <- NA
+
+#check if NAs of the character variables are now all 158
+length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageCond) & is.na(all$GarageQual)))
+```
+
+Now, the 4 character variables related to garage all have the same set of 158 NAs, which correspond to 'No Garage'. I will fix all of them in the remainder of this section
+
+**GarageType: Garage location**
+
+The values do not seem ordinal, so I will convert into a factor.
+
+       2Types	More than one type of garage
+       Attchd	Attached to home
+       Basment	Basement Garage
+       BuiltIn	Built-In (Garage part of house - typically has room above garage)
+       CarPort	Car Port
+       Detchd	Detached from home
+       NA	No Garage
+
+```{r}
+all$GarageType[is.na(all$GarageType)] <- 'No Garage'
+all$GarageType <- as.factor(all$GarageType)
+table(all$GarageType)
+```
+
+**GarageFinish: Interior finish of the garage**
+
+The values are ordinal.
+
+       Fin	Finished
+       RFn	Rough Finished	
+       Unf	Unfinished
+       NA	No Garage       
+
+```{r}
+all$GarageFinish[is.na(all$GarageFinish)] <- 'None'
+Finish <- c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)
+
+all$GarageFinish<-as.integer(revalue(all$GarageFinish, Finish))
+table(all$GarageFinish)
+```
+
+**GarageQual: Garage quality**
+
+Another variable than can be made ordinal with the Qualities vector.
+
+       Ex	Excellent
+       Gd	Good
+       TA	Typical/Average
+       Fa	Fair
+       Po	Poor
+       NA	No Garage
+       
+```{r}
+all$GarageQual[is.na(all$GarageQual)] <- 'None'
+all$GarageQual<-as.integer(revalue(all$GarageQual, Qualities))
+table(all$GarageQual)
+```
+
+**GarageCond: Garage condition**
+
+Another variable than can be made ordinal with the Qualities vector.
+
+       Ex	Excellent
+       Gd	Good
+       TA	Typical/Average
+       Fa	Fair
+       Po	Poor
+       NA	No Garage
+
+```{r}
+all$GarageCond[is.na(all$GarageCond)] <- 'None'
+all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
+table(all$GarageCond)
+```
+
+
+
+
+
+
+
+
+## Label encoding/factorizing the remaining character variables {.tabset}
+
+At this point, I have made sure that all variables with NAs are taken care of. However, I still need to also take care of the remaining character variables that without missing values. Similar to the previous section, I have created Tabs for groups of variables.
+
+```{r}
+Charcol <- names(all[,sapply(all, is.character)])
+Charcol
+cat('There are', length(Charcol), 'remaining columns with character values')
+```
+
+###Foundation
+
+**Foundation: Type of foundation**
+
+        BrkTil          Brick & Tile
+        CBlock	        Cinder Block
+        PConc	        Poured Contrete	
+        Slab	        Slab
+        Stone	        Stone
+        Wood	        Wood
+
+```{r}
+#No ordinality, so converting into factors
+all$Foundation <- as.factor(all$Foundation)
+table(all$Foundation)
+sum(table(all$Foundation))
+```
+
+**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+
+###Heating and airco
+
+There are 2 heating variables, and one that indicates Airco Yes/No.
+
+**Heating: Type of heating**
+		
+       Floor	Floor Furnace
+       GasA	Gas forced warm air furnace
+       GasW	Gas hot water or steam heat
+       Grav	Gravity furnace	
+       OthW	Hot water or steam heat other than gas
+       Wall	Wall furnace
+       
+```{r}
+#No ordinality, so converting into factors
+all$Heating <- as.factor(all$Heating)
+table(all$Heating)
+sum(table(all$Heating))
+```
+
+**HeatingQC: Heating quality and condition**
+
+       Ex	Excellent
+       Gd	Good
+       TA	Average/Typical
+       Fa	Fair
+       Po	Poor
+       
+```{r}
+#making the variable ordinal using the Qualities vector
+all$HeatingQC<-as.integer(revalue(all$HeatingQC, Qualities))
+table(all$HeatingQC)
+sum(table(all$HeatingQC))
+```
+
+**CentralAir: Central air conditioning**
+
+       N	No
+       Y	Yes
+
+```{r}
+all$CentralAir<-as.integer(revalue(all$CentralAir, c('N'=0, 'Y'=1)))
+table(all$CentralAir)
+sum(table(all$CentralAir))
+```
+
+**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+       
+### Roof
+
+There are 2 variables that deal with the roof of houses.
+
+**RoofStyle: Type of roof**
+
+       Flat	Flat
+       Gable	Gable
+       Gambrel	Gabrel (Barn)
+       Hip	Hip
+       Mansard	Mansard
+       Shed	Shed
+
+```{r}
+#No ordinality, so converting into factors
+all$RoofStyle <- as.factor(all$RoofStyle)
+table(all$RoofStyle)
+sum(table(all$RoofStyle))
+```
+		
+**RoofMatl: Roof material**
+
+       ClyTile	Clay or Tile
+       CompShg	Standard (Composite) Shingle
+       Membran	Membrane
+       Metal	Metal
+       Roll	Roll
+       Tar&Grv	Gravel & Tar
+       WdShake	Wood Shakes
+       WdShngl	Wood Shingles
+
+```{r}
+#No ordinality, so converting into factors
+all$RoofMatl <- as.factor(all$RoofMatl)
+table(all$RoofMatl)
+sum(table(all$RoofMatl))
+```
+
+**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+       
+### Land
+
+2 variables that specify the flatness and slope of the propoerty.
+
+**LandContour: Flatness of the property**
+
+       Lvl	Near Flat/Level	
+       Bnk	Banked - Quick and significant rise from street grade to building
+       HLS	Hillside - Significant slope from side to side
+       Low	Depression
+
+```{r}
+#No ordinality, so converting into factors
+all$LandContour <- as.factor(all$LandContour)
+table(all$LandContour)
+sum(table(all$LandContour))
+```
+       
+**LandSlope: Slope of property**
+		
+       Gtl	Gentle slope
+       Mod	Moderate Slope	
+       Sev	Severe Slope
+
+```{r}
+#Ordinal, so label encoding
+all$LandSlope<-as.integer(revalue(all$LandSlope, c('Sev'=0, 'Mod'=1, 'Gtl'=2)))
+table(all$LandSlope)
+sum(table(all$LandSlope))
+```
+
+**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+
+### Dwelling
+
+2 variables that specify the type and style of dwelling.
+
+**BldgType: Type of dwelling**
+		
+       1Fam	Single-family Detached	
+       2FmCon	Two-family Conversion; originally built as one-family dwelling
+       Duplx	Duplex
+       TwnhsE	Townhouse End Unit
+       TwnhsI	Townhouse Inside Unit
+
+This seems ordinal to me (single family detached=best). Let's check it with visualization.
+
+```{r}
+ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(BldgType), y=SalePrice)) +
+        geom_bar(stat='summary', fun.y = "median", fill='blue')+
+        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+        geom_label(stat = "count", aes(label = ..count.., y = ..count..))
+```
+
+However, the visualization does not show ordinality.
+
+```{r}
+#No ordinality, so converting into factors
+all$BldgType <- as.factor(all$BldgType)
+table(all$BldgType)
+sum(table(all$BldgType))
+```
+	
+**HouseStyle: Style of dwelling**
+	
+       1Story	One story
+       1.5Fin	One and one-half story: 2nd level finished
+       1.5Unf	One and one-half story: 2nd level unfinished
+       2Story	Two story
+       2.5Fin	Two and one-half story: 2nd level finished
+       2.5Unf	Two and one-half story: 2nd level unfinished
+       SFoyer	Split Foyer
+       SLvl	Split Level
+
+```{r}
+#No ordinality, so converting into factors
+all$HouseStyle <- as.factor(all$HouseStyle)
+table(all$HouseStyle)
+sum(table(all$HouseStyle))
+```
+
+**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+
+### Neighborhood and Conditions
+
+3 variables that specify the physical location, and the proximity of 'conditions'.
+
+**Neighborhood: Physical locations within Ames city limits**
+
+Note: as the number of levels is really high, I will look into binning later on.
+
+       Blmngtn	Bloomington Heights
+       Blueste	Bluestem
+       BrDale	Briardale
+       BrkSide	Brookside
+       ClearCr	Clear Creek
+       CollgCr	College Creek
+       Crawfor	Crawford
+       Edwards	Edwards
+       Gilbert	Gilbert
+       IDOTRR	Iowa DOT and Rail Road
+       MeadowV	Meadow Village
+       Mitchel	Mitchell
+       Names	North Ames
+       NoRidge	Northridge
+       NPkVill	Northpark Villa
+       NridgHt	Northridge Heights
+       NWAmes	Northwest Ames
+       OldTown	Old Town
+       SWISU	South & West of Iowa State University
+       Sawyer	Sawyer
+       SawyerW	Sawyer West
+       Somerst	Somerset
+       StoneBr	Stone Brook
+       Timber	Timberland
+       Veenker	Veenker
+
+```{r}
+#No ordinality, so converting into factors
+all$Neighborhood <- as.factor(all$Neighborhood)
+table(all$Neighborhood)
+sum(table(all$Neighborhood))
+```
+
+**Condition1: Proximity to various conditions**
+	
+       Artery	Adjacent to arterial street
+       Feedr	Adjacent to feeder street	
+       Norm	Normal	
+       RRNn	Within 200' of North-South Railroad
+       RRAn	Adjacent to North-South Railroad
+       PosN	Near positive off-site feature--park, greenbelt, etc.
+       PosA	Adjacent to postive off-site feature
+       RRNe	Within 200' of East-West Railroad
+       RRAe	Adjacent to East-West Railroad
+
+```{r}
+#No ordinality, so converting into factors
+all$Condition1 <- as.factor(all$Condition1)
+table(all$Condition1)
+sum(table(all$Condition1))
+```
+	
+**Condition2: Proximity to various conditions (if more than one is present)**
+		
+       Artery	Adjacent to arterial street
+       Feedr	Adjacent to feeder street	
+       Norm	Normal	
+       RRNn	Within 200' of North-South Railroad
+       RRAn	Adjacent to North-South Railroad
+       PosN	Near positive off-site feature--park, greenbelt, etc.
+       PosA	Adjacent to postive off-site feature
+       RRNe	Within 200' of East-West Railroad
+       RRAe	Adjacent to East-West Railroad
+
+```{r}
+#No ordinality, so converting into factors
+all$Condition2 <- as.factor(all$Condition2)
+table(all$Condition2)
+sum(table(all$Condition2))
+```
+
+**Please return to the 5.3 Tabs menu to select other (groups of) variables**
+
+### Pavement of Street & Driveway
+
+2 variables
+       
+**Street: Type of road access to property**
+
+       Grvl	Gravel	
+       Pave	Paved
+
+```{r}
+#Ordinal, so label encoding
+all$Street<-as.integer(revalue(all$Street, c('Grvl'=0, 'Pave'=1)))
+table(all$Street)
+sum(table(all$Street))
+```
+       
+**PavedDrive: Paved driveway**
+
+       Y	Paved 
+       P	Partial Pavement
+       N	Dirt/Gravel
+
+```{r}
+#Ordinal, so label encoding
+all$PavedDrive<-as.integer(revalue(all$PavedDrive, c('N'=0, 'P'=1, 'Y'=2)))
+table(all$PavedDrive)
+sum(table(all$PavedDrive))
+```
+
+## Changing some numeric variables into factors
+
+At this point, all variables are complete (No NAs), and all character variables are converted into either numeric labels of into factors. However, there are 3 variables that are recorded numeric but should actually be categorical.
+
+### Year and Month Sold
+
+While oridinality within YearBuilt (or remodeled) makes sense (old houses are worth less), we are talking about only 5 years of sales. These years also include an economic crisis. For instance: Sale Prices in 2009 (after the collapse) are very likely to be much lower than in 2007. I wil convert YrSold into a factor before modeling, but as I need the numeric version of YrSold to create an Age variable, I am not doing that yet.
+
+Month Sold is also an Integer variable. However, December is not "better" than January. Therefore, I will convert MoSold values back into factors.
+
+```{r}
+str(all$YrSold)
+str(all$MoSold)
+all$MoSold <- as.factor(all$MoSold)
+```
+
+
+```{r}
+# exercise
+aa <- ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(YrSold), y=SalePrice)) + 
+  geom_bar(fill="blue", stat="summary", fun.y="median") +
+  scale_y_continuous(breaks=seq(0,300000,by=25000), labels = scales::comma) +
+  coord_cartesian(ylim=c(0:200000)) +
+  geom_hline(yintercept = median(all$SalePrice, na.rm=T),linetype = "dashed", color="red") +
+  geom_label(stat="count", position = "identity", aes(label=..count.., y=..count..))
+
+bb <- ggplot(all[!is.na(all$SalePrice),], aes(x=MoSold, y=SalePrice)) +
+  geom_bar(fill="blue", stat="summary", fun.y="median") +
+  scale_y_continuous(breaks=seq(0,800000, by=25000), labels = scales::comma) +
+  coord_cartesian(ylim=c(0:200000)) +
+  geom_hline(yintercept = median(all$SalePrice, na.rm=T), color="red", linetype = "dashed") +
+  geom_label(stat="count", aes(label=..count.., y=..count..))
+
+
+grid.arrange(aa, bb, widths=c(1,2))
+```
+
+Although possible a bit less steep than expected, the effects of the Banking crises that took place at the end of 2007 can be seen indeed. After the highest median prices in 2007, the prices gradually decreased. However, seasonality seems to play a bigger role, as you can see below.
+
+```{r}
+ys <- ggplot(all[!is.na(all$SalePrice),], aes(x=as.factor(YrSold), y=SalePrice)) +
+        geom_bar(stat='summary', fun.y = "median", fill='blue')+
+        scale_y_continuous(breaks= seq(0, 800000, by=25000), labels = comma) +
+        geom_label(stat = "count", aes(label = ..count.., y = ..count..)) +
+        coord_cartesian(ylim = c(0, 200000)) +
+        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
+
+ms <- ggplot(all[!is.na(all$SalePrice),], aes(x=MoSold, y=SalePrice)) +
+        geom_bar(stat='summary', fun.y = "median", fill='blue')+
+        scale_y_continuous(breaks= seq(0, 800000, by=25000), labels = comma) +
+        geom_label(stat = "count", aes(label = ..count.., y = ..count..)) +
+        coord_cartesian(ylim = c(0, 200000)) +
+        geom_hline(yintercept=163000, linetype="dashed", color = "red") #dashed line is median SalePrice
+
+grid.arrange(ys, ms, widths=c(1,2))
+```
+
+### MSSubClass
+
+MSSubClass: Identifies the type of dwelling involved in the sale.	
+
+        20	1-STORY 1946 & NEWER ALL STYLES
+        30	1-STORY 1945 & OLDER
+        40	1-STORY W/FINISHED ATTIC ALL AGES
+        45	1-1/2 STORY - UNFINISHED ALL AGES
+        50	1-1/2 STORY FINISHED ALL AGES
+        60	2-STORY 1946 & NEWER
+        70	2-STORY 1945 & OLDER
+        75	2-1/2 STORY ALL AGES
+        80	SPLIT OR MULTI-LEVEL
+        85	SPLIT FOYER
+        90	DUPLEX - ALL STYLES AND AGES
+       120	1-STORY PUD (Planned Unit Development) - 1946 & NEWER
+       150	1-1/2 STORY PUD - ALL AGES
+       160	2-STORY PUD - 1946 & NEWER
+       180	PUD - MULTILEVEL - INCL SPLIT LEV/FOYER
+       190	2 FAMILY CONVERSION - ALL STYLES AND AGES
+
+These classes are coded as numbers, but really are categories.
+
+```{r}
+str(all$MSSubClass)
+
+all$MSSubClass <- as.factor(all$MSSubClass)
+
+#revalue for better readability
+all$MSSubClass<-revalue(all$MSSubClass, c('20'='1 story 1946+', '30'='1 story 1945-', '40'='1 story unf attic', '45'='1,5 story unf', '50'='1,5 story fin', '60'='2 story 1946+', '70'='2 story 1945-', '75'='2,5 story all ages', '80'='split/multi level', '85'='split foyer', '90'='duplex all style/age', '120'='1 story PUD 1946+', '150'='1,5 story PUD all', '160'='2 story PUD 1946+', '180'='PUD multilevel', '190'='2 family conversion'))
+
+str(all$MSSubClass)
+```
