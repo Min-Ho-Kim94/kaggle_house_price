@@ -148,7 +148,7 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
 ```{r}
 all %>% group_by(Alley) %>% summarize(count = count(Alley))
 
-all[is.na(all$Alley),] <- 'None'
+all$Alley[is.na(all$Alley)] <- 'None'
 all$Alley <- as.factor(all$Alley)
 
 ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
@@ -160,12 +160,40 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
 ```
 
 
+### Fence
+
+    GdPrv    Good Privacy
+    MnPrv    Minimum Privacy
+    GdWo Good Wood
+    MnWw Minimum Wood/Wire
+    NA   No Fence
+
+```{r}
+all %>% group_by(Fence) %>% summarise(count(Fence))
+```
+
+ 
+```{r}
+all$Fence[is.na(all$Fence)] <- 'None'
+all$Fence <- as.factor(all$Fence)
+
+ggplot(all[!is.na(all$SalePrice),], aes(x=Fence, y=SalePrice)) +
+  geom_bar(stat='summary', fun.y='median', fill='blue')
+```
+ 
+
+### Fireplace
+
+    Ex   Excellent - Exceptional Masonry Fireplace
+    Gd   Good - Masonry Fireplace in main level
+    TA   Average - Prefabricated Fireplace in main living area or Masonry Fireplace in basement
+    Fa   Fair - Prefabricated Fireplace in basement
+    Po   Poor - Ben Franklin Stove
+    NA   No Fireplace
 
 
-
+```{r}
  
- 
- 
- 
+```
  
  
