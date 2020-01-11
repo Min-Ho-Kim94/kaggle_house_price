@@ -208,7 +208,7 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=FireplaceQu, y=SalePrice)) +
 ```
 
 ### lot
- 
+  
 ```{r}
 all %>% group_by(LotFrontage) %>% summarise(count(LotFrontage))
 ```
