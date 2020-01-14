@@ -451,7 +451,7 @@ sum(table(all$CentralAir))
 
 **Please return to the 5.3 Tabs menu to select other (groups of) variables**
        
-### Roof
+### Roof 
 
 There are 2 variables that deal with the roof of houses.
 
