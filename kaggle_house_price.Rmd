@@ -463,7 +463,7 @@ There are 2 variables that deal with the roof of houses.
        Hip	Hip
        Mansard	Mansard
        Shed	Shed
-
+ 
 ```{r}
 #No ordinality, so converting into factors
 all$RoofStyle <- as.factor(all$RoofStyle)
