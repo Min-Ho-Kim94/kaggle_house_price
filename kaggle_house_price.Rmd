@@ -255,9 +255,9 @@ sum(table(all$LotShape))
 ```
 
 
-### Garage variables
+### Garage 
 
-**Altogether, there are 7 variables related to garages**
+Garage에 관련된 변수는 총 7개로 
 
 Two of those have one NA (GarageCars and GarageArea), one has 157 NAs (GarageType), 4 variables have 159 NAs. 
 
