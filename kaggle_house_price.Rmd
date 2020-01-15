@@ -73,7 +73,6 @@ NAs(all)
 
 ```{r}
 nrow(all[!complete.cases(all),])
-
 sum(!complete.cases(all))
 ```
 
