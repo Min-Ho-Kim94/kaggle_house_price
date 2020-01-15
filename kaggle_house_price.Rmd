@@ -575,7 +575,7 @@ Overall Quality가 증가할수록 SalePrice가 점점 증가하는 꼴을 볼 �
 OverallQual=4일 경우 이상치가 존재하는 것 같다.
 
 
-SalePrice와 GrLivArea 간 plot
+SalePrice와 GrLivArea 간 plot 
 ```{r}
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
         geom_point(col='deepskyblue3') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
