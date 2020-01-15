@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(scales)
 ```
 
 ```{r warning=TRUE}
@@ -69,6 +70,14 @@ NAs(all)
  
 관련있는 변수끼리 묶에 결측치 처리 (imputation)을 한다.
 참고로 SalePrice의 1459개는 test의 갯수로 예측해야 하는 종속변수이므로 imputation하지 않는다.
+
+```{r}
+nrow(all[!complete.cases(all),])
+
+sum(!complete.cases(all))
+```
+
+결측치가 없는 행의 개수를 출력할 때 complete.cases()를 사용한다.
 
 ### Pool
 PoolQC : Pool quality
