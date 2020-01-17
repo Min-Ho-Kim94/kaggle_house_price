@@ -531,6 +531,8 @@ table(all$BsmtFinType2)
 여기까지 데이터 중 결측이 하나라도 없는 행의 갯수를 알아보면,
 ```{r}
 sum(complete.cases(subset(all, select=-c(SalePrice))))
+
+which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
 ```
 
 전체 2919개 중 2883개(전체 중 98.77%)이다.
@@ -587,6 +589,18 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
 ```
 
 
+524와 1299번째 관찰값은 선에서 많이 벗어난 것 처럼 보인다. 즉, GrLivArea가 넓음에도 불구하고, SalePrice가 낮은 경우이다. 이 집들의 OverallQual을 본다면,
+```{r}
+all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")]
+```
+전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
+
+
+이제, Collinearity를 
+
+```{r}
+
+```
 
 
   
