@@ -598,7 +598,7 @@ all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")]
 전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
 
 
-이제, Collinearity를 
+이제, Collinearity를  
 
 ```{r}
 
