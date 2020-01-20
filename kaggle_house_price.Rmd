@@ -591,7 +591,7 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
 ```
 
 
-524와 1299번째 관찰값은 선에서 많이 벗어난 것 처럼 보인다. 즉, GrLivArea가 넓음에도 불구하고, SalePrice가 낮은 경우이다. 이 집들의 OverallQual을 본다면, 
+524와 1299번째 관찰값은 선에서 많이 벗어난 것 처럼 보인다. 즉, GrLivArea가 넓음에도 불구하고, SalePrice가 낮은 경우이다. 이 집들의 OverallQual을 본다면,  
 ```{r}
 all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")]
 ```
