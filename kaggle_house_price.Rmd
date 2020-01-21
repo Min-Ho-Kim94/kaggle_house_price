@@ -31,6 +31,8 @@ library(corrplot)
 library(ggrepel)
 library(caret)
 library(xgboost)
+library(glmnet)
+library(Metrics)
 ```
 
 ```{r warning=TRUE}
@@ -45,6 +47,14 @@ names(train)
 test$SalePrice <- NA
 all <- rbind(train,test)
 names(all)
+```
+
+ID 식별자를 따로 분류하고 all에는 ID를 제외한다. (예측에는 필요없기 때문)
+```{r}
+trainID <- train[,1]
+testID <- test[,1]
+
+all <- all[,-1]
 ```
 
 
@@ -69,6 +79,11 @@ summary(log(all$SalePrice))
 ggplot(all[!is.na(all$SalePrice),], aes(x=log(SalePrice))) +
   geom_histogram(fill="red") +
   scale_x_continuous(breaks = seq(10,15, by=0.25))
+
+all$SalePrice <- log(all$SalePrice + 1)
+
+qqnorm(all$SalePrice)
+qqline(all$SalePrice)
 ```
 
 평균이 12.02이고 어느 쪽으로 skewed된 경향이 감소했음을 알 수 있었다.
@@ -156,7 +171,7 @@ all$PoolQC[2600] <- 2
 
 ```{r}
 all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
-all$MiscFeature <- as.factor(all$MiscFeature)
+all$MiscFeature <- as.character(all$MiscFeature)
 
 library(scales)
 ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
@@ -177,7 +192,7 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
 all %>% group_by(Alley) %>% summarize(count = count(Alley))
 
 all$Alley[is.na(all$Alley)] <- 'None'
-all$Alley <- as.factor(all$Alley)
+all$Alley <- as.character(all$Alley)
 
 ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='blue') +
@@ -203,7 +218,7 @@ all %>% group_by(Fence) %>% summarise(count(Fence))
  
 ```{r}
 all$Fence[is.na(all$Fence)] <- 'None'
-all$Fence <- as.factor(all$Fence)
+all$Fence <- as.character(all$Fence)
 
 ggplot(all[!is.na(all$SalePrice),], aes(x=Fence, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='blue')
@@ -226,7 +241,7 @@ all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
 # Qualities None   Po   Fa   TA   Gd   Ex 
 #                0    1    2    3    4    5 
 
-all$FireplaceQu <- as.factor(revalue(all$FireplaceQu , replace=Qualities))
+all$FireplaceQu <- as.character(revalue(all$FireplaceQu , replace=Qualities))
 ```
  
 ```{r}
@@ -356,7 +371,7 @@ NAs(all[,grep("^Garage",names(all))])
 
 ```{r}
 all$GarageType[is.na(all$GarageType)] <- 'No Garage'
-all$GarageType <- as.factor(all$GarageType)
+all$GarageType <- as.character(all$GarageType)
 table(all$GarageType)
 ```
 
@@ -542,6 +557,72 @@ which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs
 
 ## classifying variable classes and encoding {.tabset}
 
+아래 4개 변수는 char로 변형해준다.
+```{r}
+all$MSSubClass = as.character(all$MSSubClass)
+all$OverallCond = as.character(all$OverallCond)
+all$YrSold = as.character(all$YrSold)
+all$MoSold = as.character(all$MoSold)
+```
+
+### label encoding (ordinal)
+
+순서형 변수들은 level대로 인코딩해준다.
+```{r}
+cols = c("FireplaceQu", "BsmtQual", "BsmtCond", "GarageQual", "GarageCond", 
+    "ExterQual", "ExterCond", "HeatingQC", "PoolQC", "KitchenQual", "BsmtFinType1", 
+    "BsmtFinType2", "Functional", "Fence", "BsmtExposure", "GarageFinish", 
+    "LandSlope", "LotShape", "PavedDrive", "Street", "Alley", "CentralAir", 
+    "MSSubClass", "OverallCond", "YrSold", "MoSold")
+
+FireplaceQu = c("None", "Po", "Fa", "TA", "Gd", "Ex")
+BsmtQual = c("None", "Po", "Fa", "TA", "Gd", "Ex")
+BsmtCond = c("None", "Po", "Fa", "TA", "Gd", "Ex")
+GarageQual = c("None", "Po", "Fa", "TA", "Gd", "Ex")
+GarageCond = c("None", "Po", "Fa", "TA", "Gd", "Ex")
+ExterQual = c("Po", "Fa", "TA", "Gd", "Ex")
+ExterCond = c("Po", "Fa", "TA", "Gd", "Ex")
+HeatingQC = c("Po", "Fa", "TA", "Gd", "Ex")
+PoolQC = c("None", "Fa", "TA", "Gd", "Ex")
+KitchenQual = c("Po", "Fa", "TA", "Gd", "Ex")
+BsmtFinType1 = c("None", "Unf", "LwQ", "Rec", "BLQ", "ALQ", "GLQ")
+BsmtFinType2 = c("None", "Unf", "LwQ", "Rec", "BLQ", "ALQ", "GLQ")
+Functional = c("Sal", "Sev", "Maj2", "Maj1", "Mod", "Min2", "Min1", "Typ")
+Fence = c("None", "MnWw", "GdWo", "MnPrv", "GdPrv")
+BsmtExposure = c("None", "No", "Mn", "Av", "Gd")
+GarageFinish = c("None", "Unf", "RFn", "Fin")
+LandSlope = c("Sev", "Mod", "Gtl")
+LotShape = c("IR3", "IR2", "IR1", "Reg")
+PavedDrive = c("N", "P", "Y")
+Street = c("Pave", "Grvl")
+Alley = c("None", "Pave", "Grvl")
+MSSubClass = c("20", "30", "40", "45", "50", "60", "70", "75", "80", "85", 
+    "90", "120", "150", "160", "180", "190")
+OverallCond = NA
+MoSold = NA
+YrSold = NA
+CentralAir = NA
+levels = list(FireplaceQu, BsmtQual, BsmtCond, GarageQual, GarageCond, 
+    ExterQual, ExterCond, HeatingQC, PoolQC, KitchenQual, BsmtFinType1, 
+    BsmtFinType2, Functional, Fence, BsmtExposure, GarageFinish, LandSlope, 
+    LotShape, PavedDrive, Street, Alley, CentralAir, MSSubClass, OverallCond, 
+    YrSold, MoSold)
+i = 1
+for (c in cols) {
+    if (c == "CentralAir" | c == "OverallCond" | c == "YrSold" | c == "MoSold") {
+        all[, c] = as.numeric(factor(all[, c]))
+    } else all[, c] = as.numeric(factor(all[, c], levels = levels[[i]]))
+    i = i + 1
+}
+```
+
+
+```{r}
+all$TotalSF = all$TotalBsmtSF + all$X1stFlrSF + all$X2ndFlrSF
+```
+
+
+
 all 에는 character, numeric, 그리고 이미 변환한 Factor class로 이루어져 있다. 이를 분류하면,
 
 ```{r}
@@ -597,12 +678,44 @@ all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")]
 ```
 전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
 
+```{r}
+chrvar
+numvar
+facvar
+sum(length(chrvar),length(numvar),length(facvar)) #81
+```
 
-이제, Collinearity를  
+### one-hot encodeing
 
 ```{r}
+dummies <- dummyVars(~., all[chrvar])
+categorical_1_hot <- predict(dummies, all[chrvar])
 
+all <- cbind(all[numvar], categorical_1_hot)
 ```
+
+## modeling
+
+```{r}
+set.seed(191102)
+training <- all[1:1459,]
+testing <- all[1460:2919,]
+```
+
+
+### lasso
+
+```{r}
+cv_lasso = cv.glmnet(as.matrix(subset(training, select = -c(SalePrice))), training[,"SalePrice"])
+
+## Predictions
+preds = data.frame(exp(predict(cv_lasso, newx = as.matrix(subset(testing, select = -c(SalePrice))), 
+    s = "lambda.min")) - 1)
+```
+
+
+
+
 
 
   
