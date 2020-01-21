@@ -550,6 +550,8 @@ table(all$BsmtFinType2)
 sum(complete.cases(subset(all, select=-c(SalePrice))))
 
 which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
+
+all <- all[-which(complete.cases(subset(all,select=-c(SalePrice)))==F) ,]
 ```
 
 전체 2919개 중 2883개(전체 중 98.77%)이다.
