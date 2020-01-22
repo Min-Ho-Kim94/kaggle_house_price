@@ -569,7 +569,7 @@ all$MoSold = as.character(all$MoSold)
 
 ### label encoding (ordinal)
 
-순서형 변수들은 level대로 인코딩해준다.
+순서형 변수들은 level대로 인코딩해준다. 
 ```{r}
 cols = c("FireplaceQu", "BsmtQual", "BsmtCond", "GarageQual", "GarageCond", 
     "ExterQual", "ExterCond", "HeatingQC", "PoolQC", "KitchenQual", "BsmtFinType1", 
