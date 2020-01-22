@@ -79,11 +79,6 @@ summary(log(all$SalePrice))
 ggplot(all[!is.na(all$SalePrice),], aes(x=log(SalePrice))) +
   geom_histogram(fill="red") +
   scale_x_continuous(breaks = seq(10,15, by=0.25))
-
-all$SalePrice <- log(all$SalePrice + 1)
-
-qqnorm(all$SalePrice)
-qqline(all$SalePrice)
 ```
 
 평균이 12.02이고 어느 쪽으로 skewed된 경향이 감소했음을 알 수 있었다.
@@ -139,7 +134,7 @@ all$PoolQC[is.na(all$PoolQC)] <- 'None'
 그런 뒤 새로 Factor로 변환시키는데, level을 지정해준다. 순서형 변수이므로 순서로 변환.
 
 ```{r}
-library(plyr)
+library(plyr) #plyr::revalue()
 Qualities <- c('None'=0, 'Po'=1, "Fa"=2, "TA"=3, "Gd"=4, "Ex"=5)
 all$PoolQC <- as.integer(revalue(all$PoolQC, replace=Qualities))
 table(all$PoolQC)
@@ -241,7 +236,7 @@ all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
 # Qualities None   Po   Fa   TA   Gd   Ex 
 #                0    1    2    3    4    5 
 
-all$FireplaceQu <- as.character(revalue(all$FireplaceQu , replace=Qualities))
+all$FireplaceQu <- as.integer(revalue(all$FireplaceQu , replace=Qualities))
 ```
  
 ```{r}
@@ -562,6 +557,7 @@ all <- all[-which(complete.cases(subset(all,select=-c(SalePrice)))==F) ,]
 아래 4개 변수는 char로 변형해준다.
 ```{r}
 all$MSSubClass = as.character(all$MSSubClass)
+all$OverallQual = as.character(all$OverallQual)
 all$OverallCond = as.character(all$OverallCond)
 all$YrSold = as.character(all$YrSold)
 all$MoSold = as.character(all$MoSold)
@@ -570,57 +566,20 @@ all$MoSold = as.character(all$MoSold)
 ### label encoding (ordinal)
 
 순서형 변수들은 level대로 인코딩해준다. 
-```{r}
-cols = c("FireplaceQu", "BsmtQual", "BsmtCond", "GarageQual", "GarageCond", 
-    "ExterQual", "ExterCond", "HeatingQC", "PoolQC", "KitchenQual", "BsmtFinType1", 
-    "BsmtFinType2", "Functional", "Fence", "BsmtExposure", "GarageFinish", 
-    "LandSlope", "LotShape", "PavedDrive", "Street", "Alley", "CentralAir", 
-    "MSSubClass", "OverallCond", "YrSold", "MoSold")
 
-FireplaceQu = c("None", "Po", "Fa", "TA", "Gd", "Ex")
-BsmtQual = c("None", "Po", "Fa", "TA", "Gd", "Ex")
-BsmtCond = c("None", "Po", "Fa", "TA", "Gd", "Ex")
-GarageQual = c("None", "Po", "Fa", "TA", "Gd", "Ex")
-GarageCond = c("None", "Po", "Fa", "TA", "Gd", "Ex")
-ExterQual = c("Po", "Fa", "TA", "Gd", "Ex")
-ExterCond = c("Po", "Fa", "TA", "Gd", "Ex")
-HeatingQC = c("Po", "Fa", "TA", "Gd", "Ex")
-PoolQC = c("None", "Fa", "TA", "Gd", "Ex")
-KitchenQual = c("Po", "Fa", "TA", "Gd", "Ex")
-BsmtFinType1 = c("None", "Unf", "LwQ", "Rec", "BLQ", "ALQ", "GLQ")
-BsmtFinType2 = c("None", "Unf", "LwQ", "Rec", "BLQ", "ALQ", "GLQ")
-Functional = c("Sal", "Sev", "Maj2", "Maj1", "Mod", "Min2", "Min1", "Typ")
-Fence = c("None", "MnWw", "GdWo", "MnPrv", "GdPrv")
-BsmtExposure = c("None", "No", "Mn", "Av", "Gd")
-GarageFinish = c("None", "Unf", "RFn", "Fin")
-LandSlope = c("Sev", "Mod", "Gtl")
-LotShape = c("IR3", "IR2", "IR1", "Reg")
-PavedDrive = c("N", "P", "Y")
-Street = c("Pave", "Grvl")
-Alley = c("None", "Pave", "Grvl")
-MSSubClass = c("20", "30", "40", "45", "50", "60", "70", "75", "80", "85", 
-    "90", "120", "150", "160", "180", "190")
-OverallCond = NA
-MoSold = NA
-YrSold = NA
-CentralAir = NA
-levels = list(FireplaceQu, BsmtQual, BsmtCond, GarageQual, GarageCond, 
-    ExterQual, ExterCond, HeatingQC, PoolQC, KitchenQual, BsmtFinType1, 
-    BsmtFinType2, Functional, Fence, BsmtExposure, GarageFinish, LandSlope, 
-    LotShape, PavedDrive, Street, Alley, CentralAir, MSSubClass, OverallCond, 
-    YrSold, MoSold)
-i = 1
-for (c in cols) {
-    if (c == "CentralAir" | c == "OverallCond" | c == "YrSold" | c == "MoSold") {
-        all[, c] = as.numeric(factor(all[, c]))
-    } else all[, c] = as.numeric(factor(all[, c], levels = levels[[i]]))
-    i = i + 1
-}
+```{r}
+all$ExterQual<-as.integer(revalue(all$ExterQual,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
+all$ExterCond<-as.integer(revalue(all$ExterCond,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
+all$HeatingQC<-as.integer(revalue(all$HeatingQC,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
+all$KitchenQual<-as.integer(revalue(all$KitchenQual,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
+all$Fence<-as.integer(revalue(all$Fence, c("None"=0, "MnWw"=1, "GdWo"=2, "MnPrv"=3, "GdPrv"=4)))
+all$PavedDrive<-as.integer(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
 ```
 
 
 ```{r}
 all$TotalSF = all$TotalBsmtSF + all$X1stFlrSF + all$X2ndFlrSF
+all <- subset(all, select=-c(TotalBsmtSF, X1stFlrSF, X2ndFlrSF))
 ```
 
 
@@ -651,7 +610,7 @@ cor <- cor[corhigh,corhigh]
 corrplot.mixed(cor,tl.col="black", tl.pos = "lt")
 ```
 
-SalePrice에 관련해서 가장 correlation이 높은 변수는 OverallQual, GrLivArea, GarageCars, GarageArea, TotalBsmtSF 등 순이었다. 그 중 GarageCars와 GarageArea는 0.89로 모든 변수들 중 가장 높은 corr을 가졌고, GrLivArea와 TotRmsAbvGrd도 0.81로 corr이 높았다.
+SalePrice에 관련해서 가장 correlation이 높은 변수는 OverallQual, TotalSF, GrLivArea, GarageCars, ExterQual 등 순이었다. 그 중 GarageCars와 GarageArea는 0.89로 모든 변수들 중 가장 높은 corr을 가졌고, GrLivArea와 TotRmsAbvGrd도 0.81로 corr이 높았다.
 
 
 SalePrice와 OverallQual 간 plot
@@ -696,23 +655,33 @@ categorical_1_hot <- predict(dummies, all[chrvar])
 all <- cbind(all[numvar], categorical_1_hot)
 ```
 
+
+### log(SalePrice)
+```{r}
+all$SalePrice <- log(all$SalePrice + 1)
+
+qqnorm(all$SalePrice)
+qqline(all$SalePrice)
+```
+
+
 ## modeling
 
 ```{r}
 set.seed(191102)
-training <- all[1:1459,]
-testing <- all[1460:2919,]
+training <- all[!is.na(all$SalePrice),]
+testing <- all[is.na(all$SalePrice),]
 ```
 
 
 ### lasso
 
 ```{r}
-cv_lasso = cv.glmnet(as.matrix(subset(training, select = -c(SalePrice))), training[,"SalePrice"])
+#cv_lasso = cv.glmnet(as.matrix(subset(training, select = -c(SalePrice))), training[,"SalePrice"])
 
 ## Predictions
-preds = data.frame(exp(predict(cv_lasso, newx = as.matrix(subset(testing, select = -c(SalePrice))), 
-    s = "lambda.min")) - 1)
+#preds = data.frame(exp(predict(cv_lasso, newx = as.matrix(subset(testing, select = -c(SalePrice))), 
+#    s = "lambda.min")) - 1)
 ```
 
 
