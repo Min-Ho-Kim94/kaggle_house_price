@@ -646,7 +646,7 @@ facvar
 sum(length(chrvar),length(numvar),length(facvar)) #81
 ```
 
-### one-hot encodeing
+### one-hot encodeing 
 
 ```{r}
 dummies <- dummyVars(~., all[chrvar])
