@@ -665,7 +665,7 @@ qqline(all$SalePrice)
 ```
 
 
-## modeling  
+## modeling   
 
 ```{r}
 set.seed(191102)
