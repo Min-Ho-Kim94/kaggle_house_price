@@ -32,7 +32,9 @@ library(ggrepel)
 library(caret)
 library(xgboost)
 library(glmnet)
+library(Matrix)
 library(Metrics)
+library(e1071)
 ```
 
 ```{r warning=TRUE}
@@ -578,8 +580,8 @@ all$PavedDrive<-as.integer(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
 
 
 ```{r}
-all$TotalSF = all$TotalBsmtSF + all$X1stFlrSF + all$X2ndFlrSF
-all <- subset(all, select=-c(TotalBsmtSF, X1stFlrSF, X2ndFlrSF))
+#all$TotalSF = all$TotalBsmtSF + all$X1stFlrSF + all$X2ndFlrSF
+#all <- subset(all, select=-c(TotalBsmtSF, X1stFlrSF, X2ndFlrSF))
 ```
 
 
@@ -639,27 +641,39 @@ all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")]
 ```
 전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
 
+
+
+
+## remove outliers
 ```{r}
-chrvar
-numvar
-facvar
-sum(length(chrvar),length(numvar),length(facvar)) #81
+all <- all[-c(524,1299),]
 ```
+
+## preProcessing
+
+### normalizating & skewness
 
 ### one-hot encodeing 
 
 ```{r}
-dummies <- dummyVars(~., all[chrvar])
-categorical_1_hot <- predict(dummies, all[chrvar])
+#dummies <- dummyVars(~., all[chrvar])
+#categorical_1_hot <- predict(dummies, all[chrvar])
+dummies <- as.data.frame(model.matrix(~.-1, all[,names(all) %in% chrvar]))
 
-all <- cbind(all[numvar], categorical_1_hot)
+all <- cbind(all[,names(all) %in% numvar], dummies)
 ```
 
 
 ### log(SalePrice)
 ```{r}
-all$SalePrice <- log(all$SalePrice + 1)
+skewness(all[!is.na(all$SalePrice),]$SalePrice)
+qqnorm(all$SalePrice)
+qqline(all$SalePrice)
 
+#logarithm
+all$SalePrice <- log(all$SalePrice)
+
+skewness(all[!is.na(all$SalePrice),]$SalePrice)
 qqnorm(all$SalePrice)
 qqline(all$SalePrice)
 ```
@@ -668,20 +682,31 @@ qqline(all$SalePrice)
 ## modeling   
 
 ```{r}
-set.seed(191102)
-training <- all[!is.na(all$SalePrice),]
-testing <- all[is.na(all$SalePrice),]
+dim(all)
+all2 <- all[,!(names(all) %in% "SalePrice")]
+training <- all2[!is.na(all$SalePrice),]
+testing <- all2[is.na(all$SalePrice),]
 ```
 
 
 ### lasso
 
 ```{r}
-#cv_lasso = cv.glmnet(as.matrix(subset(training, select = -c(SalePrice))), training[,"SalePrice"])
+set.seed(191102)
+control <- trainControl(method="cv", number=10)
+lassogrid <- expand.grid(
+  alpha=1, lambda=seq(0.001, 0.1, by=0.0005)
+) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
 
-## Predictions
-#preds = data.frame(exp(predict(cv_lasso, newx = as.matrix(subset(testing, select = -c(SalePrice))), 
-#    s = "lambda.min")) - 1)
+
+lasso_model <- train(x=training, y=all$SalePrice[!is.na(all$SalePrice)], method = "glmnet", trControl="control", tuneGrid="lassogrid")
+
+```
+
+```{r}
+lasso_model <- cv.glmnet(as.matrix(training), all$SalePrice[!is.na(all$SalePrice)])
+
+preds <- predict(lasso_model, newx = as.matrix(testing), s="lambda.min")
 ```
 
 
