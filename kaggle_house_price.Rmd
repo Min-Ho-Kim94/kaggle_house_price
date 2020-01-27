@@ -524,6 +524,21 @@ NAs(all[,grep("MasVnr", names(all))])
 
 
 
+### other variables
+```{r}
+NAs(all)
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
