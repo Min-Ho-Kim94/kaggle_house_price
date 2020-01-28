@@ -513,15 +513,31 @@ NAs(all[,grep("Bsmt", names(all))])
 NAs(all[,grep("MasVnr", names(all))])
 ```
 
-"MasVnrType, MasVnrArea" 
+"MasVnrType, MasVnrArea" 두 변수의 결측이 동시에 나타나는 관찰값인지 알아보면,
 
+```{r}
+all[is.na(all$MasVnrType),c("MasVnrType", "MasVnrArea")]
+nrow(all[is.na(all$MasVnrType),c("MasVnrType", "MasVnrArea")])
+```
+2611번째 관찰값을 제외하고는 23개 모두 NA값을 가졌다. 
 
+```{r}
+ggplot(all, aes(x=MasVnrType)) +
+  geom_bar(fill="deepskyblue3")
+ggplot(all, aes(x=MasVnrArea)) +
+  geom_histogram(fill="deepskyblue3", na.rm = T, binwidth=30)
 
+table(all$MasVnrType)
+summary(all$MasVnrArea)
+```
 
+MasVnrType이 없는 None인 빈도가 2919개 중 1742개로 가장 많았고, ManVnrArea또한 0인 빈도가 매우 많았다. 따라서 2611번째를 제외한 23개의 결측에 대해서 None, 0으로 결측치 처리하였고, 2611번째의 ManVnrArea는 198로 평균보다 높은 값을 가졌다. 따라서 MasVnrType 중 None을 제외하고 가장 빈도가 많았던 BrkFace로 결측치 처리하였다.
 
-
-
-
+```{r}
+all$MasVnrType[2611] <- 'BrkFace'
+all$MasVnrType[is.na(all$MasVnrType)] <- 'None'
+all$MasVnrArea[is.na(all$MasVnrArea)] <- 0
+```
 
 
 ### other variables
@@ -529,35 +545,58 @@ NAs(all[,grep("MasVnr", names(all))])
 NAs(all)
 ```
 
+각각의 빈도를 살펴보면,
 
+```{r}
+g1 <- ggplot(all, aes(x=MSZoning)) +
+  geom_bar(fill="deepskyblue3")
+g2 <- ggplot(all, aes(x=Utilities)) +
+  geom_bar(fill="deepskyblue3")
+g3 <- ggplot(all, aes(x=Functional)) +
+  geom_bar(fill="deepskyblue3")
+g4 <- ggplot(all, aes(x=Exterior1st)) +
+  geom_bar(fill="deepskyblue3") + theme(axis.text.x = element_text(angle = 35, hjust = 1)) +
+  scale_y_continuous(breaks=seq(0,1000,by=500))
+g5 <- ggplot(all, aes(x=Exterior2nd)) +
+  geom_bar(fill="deepskyblue3") + theme(axis.text.x = element_text(angle = 35, hjust = 1)) +
+  scale_y_continuous(breaks=seq(0,1000,by=500))
+g6 <- ggplot(all, aes(x=Electrical)) +
+  geom_bar(fill="deepskyblue3")
+g7 <- ggplot(all, aes(x=KitchenQual)) +
+  geom_bar(fill="deepskyblue3")
+g8 <- ggplot(all, aes(x=SaleType)) +
+  geom_bar(fill="deepskyblue3") + theme(axis.text.x = element_text(angle = 35, hjust = 1)) +
+  scale_y_continuous(breaks=seq(0,2500,by=1000))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-여기까지 데이터 중 결측이 하나라도 없는 행의 갯수를 알아보면,
-```{r trash}
-sum(complete.cases(subset(all, select=-c(SalePrice))))
-
-which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
-
-#train : 9 / test: 27
-all <- all[-which(complete.cases(subset(all,select=-c(SalePrice)))==F) ,]
+multiplot(g1,g2,g3,g4,g6,g7,g8,g5, cols = 2)
 ```
 
-전체 2919개 중 2883개(전체 중 98.77%)이다.
 
+KitchenQual을 제외한 7개 변수들은 하나의 level에 압도적인 빈도를 가지고 있었다. 따라서 최빈값으로 보정하였고, 
+
+```{r}
+all[is.na(all$KitchenQual),c("KitchenQual","KitchenAbvGr")]
+names(sort(-table(all[all$KitchenAbvGr==1,"KitchenQual"])))[1]
+```
+부엌의 개수도 1개인 데이터 중 KitchenQUal의 최빈값이 TA(Typical/Average)이었으므로 TA로 보정하였다.
+
+```{r}
+all$MSZoning[is.na(all$MSZoning)] <- names(sort(-table(all[,"MSZoning"])))[1]
+all$Electrical[is.na(all$Electrical)] <- names(sort(-table(all[,"Electrical"])))[1]
+all$Utilities[is.na(all$Utilities)] <- names(sort(-table(all[,"Utilities"])))[1]
+all$Functional[is.na(all$Functional)] <- names(sort(-table(all[,"Functional"])))[1]
+all$SaleType[is.na(all$SaleType)] <- names(sort(-table(all[,"SaleType"])))[1]
+all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all[,"Exterior1st"])))[1]
+all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(-table(all[,"Exterior2nd"])))[1]
+
+all[1556,"KitchenQual"] <- "TA"
+```
+
+```{r}
+NAs(all)
+sum(complete.cases(subset(all, select=-c(SalePrice))))
+which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
+```
 
 ## label encoding features {.tabset}
 
