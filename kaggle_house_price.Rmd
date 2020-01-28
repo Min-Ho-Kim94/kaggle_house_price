@@ -513,7 +513,7 @@ NAs(all[,grep("Bsmt", names(all))])
 NAs(all[,grep("MasVnr", names(all))])
 ```
 
-"MasVnrType, MasVnrArea"
+"MasVnrType, MasVnrArea" 
 
 
 
