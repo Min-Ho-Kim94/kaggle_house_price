@@ -118,9 +118,10 @@ sum(!complete.cases(all))
 ### Pool
 PoolQC : Pool quality
 
-PoolQC는 전체 2919개 중 10개를 제외한 나머지는 결측으로 처리되어 있다. 이를 NA에서 None 즉 pool이 없다고 바꿔준다.
+PoolQC는 전체 2919개 중 10개를 제외한 나머지는 결측으로 처리되어 있다. PoolArea도 0이므로 이를 NA에서 None, 즉 pool이 없다고 바꿔준다.
 
 ```{r}
+table(all$PoolArea, all$PoolQC,useNA = "ifany")
 all$PoolQC[is.na(all$PoolQC)] <- 'None'
 ```
 
@@ -158,13 +159,6 @@ all$PoolQC[2600] <- 2
  
 ### Miscellaneous
 
-       Elev	Elevator
-       Gar2	2nd Garage (if not described in garage section)
-       Othr	Other
-       Shed	Shed (over 100 SF)
-       TenC	Tennis Court
-       NA	None
-
 ```{r}
 all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
 all$MiscFeature <- as.character(all$MiscFeature)
@@ -180,10 +174,6 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
 
 ### Alley
 
-       Grvl	Gravel
-       Pave	Paved
-       NA 	No alley access
-
 ```{r}
 all %>% group_by(Alley) %>% summarize(count = count(Alley))
 
@@ -193,19 +183,10 @@ all$Alley <- as.character(all$Alley)
 ggplot(all[!is.na(all$SalePrice),], aes(x=Alley, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='deepskyblue3') +
   scale_y_continuous(breaks=seq(0,200000, by=50000), labels = scales::comma)
-
-
-
 ```
 
 
 ### Fence
-
-    GdPrv    Good Privacy
-    MnPrv    Minimum Privacy
-    GdWo Good Wood
-    MnWw Minimum Wood/Wire
-    NA   No Fence
 
 ```{r}
 all %>% group_by(Fence) %>% summarise(count(Fence))
@@ -223,19 +204,11 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=Fence, y=SalePrice)) +
 
 ### Fireplace
 
-    Ex   Excellent - Exceptional Masonry Fireplace
-    Gd   Good - Masonry Fireplace in main level
-    TA   Average - Prefabricated Fireplace in main living area or Masonry Fireplace in basement
-    Fa   Fair - Prefabricated Fireplace in basement
-    Po   Poor - Ben Franklin Stove
-    NA   No Fireplace
-
-
 ```{r}
 all %>% group_by(FireplaceQu) %>% summarize(count(FireplaceQu))
 all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
 # Qualities None   Po   Fa   TA   Gd   Ex 
-#                0    1    2    3    4    5 
+#             0    1    2    3    4    5 
 
 all$FireplaceQu <- as.integer(revalue(all$FireplaceQu , replace=Qualities))
 ```
@@ -278,11 +251,6 @@ for (i in 1:nrow(all)){
 **LotShape: General shape of property**
 
 No NAs. Values seem ordinal (Regular=best)
-
-       Reg	Regular	
-       IR1	Slightly irregular
-       IR2	Moderately Irregular
-       IR3	Irregular
 
 ```{r}
 all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
@@ -587,6 +555,8 @@ all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all[,"Exterior1st"]
 all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(-table(all[,"Exterior2nd"])))[1]
 
 all[1556,"KitchenQual"] <- "TA"
+
+all$KitchenQual<-as.integer(revalue(all$KitchenQual,  Qualities))
 ```
 
 ```{r}
@@ -594,6 +564,10 @@ NAs(all)
 sum(complete.cases(subset(all, select=-c(SalePrice))))
 which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
 ```
+
+
+
+
 
 ## label encoding features {.tabset}
 
@@ -609,8 +583,6 @@ facvar
 
 sum(length(chrvar),length(numvar),length(facvar)) #81
 ```
-
-### label encoding (ordinal)
 
 **numeric class**
 수치형 변수가 SalePrice와 어느정도 상관관계가 있는지 알아보기 위해 corrplot을 그려보면,
@@ -653,7 +625,7 @@ all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")]
 ```
 전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
 
-
+### label encoding (ordinal)
 
 아래 4개 변수는 char로 변형해준다.
 ```{r}
@@ -667,10 +639,10 @@ all$MoSold = as.character(all$MoSold)
 
 순서형 변수들은 level대로 인코딩해준다. 
 ```{r}
-all$ExterQual<-as.integer(revalue(all$ExterQual,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
-all$ExterCond<-as.integer(revalue(all$ExterCond,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
-all$HeatingQC<-as.integer(revalue(all$HeatingQC,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
-all$KitchenQual<-as.integer(revalue(all$KitchenQual,  c("Po"=0, "Fa"=1, "TA"=2, "Gd"=3, "Ex"=4)))
+all$ExterQual<-as.integer(revalue(all$ExterQual,  Qualities))
+all$ExterCond<-as.integer(revalue(all$ExterCond,  Qualities))
+all$HeatingQC<-as.integer(revalue(all$HeatingQC,  Qualities))
+
 all$Fence<-as.integer(revalue(all$Fence, c("None"=0, "MnWw"=1, "GdWo"=2, "MnPrv"=3, "GdPrv"=4)))
 all$PavedDrive<-as.integer(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
 ```
