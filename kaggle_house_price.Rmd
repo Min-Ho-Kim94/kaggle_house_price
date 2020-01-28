@@ -29,6 +29,7 @@ library(plyr)
 library(scales)
 library(knitr)
 library(gridExtra)
+library(Rmisc)
 library(corrplot)
 library(ggrepel)
 library(caret)
@@ -294,15 +295,11 @@ sum(table(all$LotShape))
 
 ```{r}
 NAs(all[,names(all) %in% names(all)[grep("Garage", names(all))]])
+NAs(all[,grep("^Garage",names(all))])
 ```
 
 
 Garage에 관련된 변수는 총 7개로 GarageType, GarageYrBlt, GarageFinish, GarageCars, GarageArea, GarageQual, GaragaCond이다. 각각은 다 결측이 있었으므로 imputation을 실행하기로 했다. 
-
-
-```{r}
-NAs(all[,grep("^Garage",names(all))])
-```
 
 grep 함수와 NAs 함수로 Garage로 시작하는 변수의 NA 개수를 반환하게 한다.
 
