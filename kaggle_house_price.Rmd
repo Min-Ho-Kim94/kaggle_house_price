@@ -571,7 +571,7 @@ which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs
 
 ## label encoding features {.tabset}
 
-all 에는 character, numeric, 그리고 이미 변환한 Factor class로 이루어져 있다. 이를 분류하면,
+all 에는 character, numeric, 그리고 이미 변환한 Factor class로 이루어져 있다. 이를 분류하면, 
 
 ```{r}
 chrvar <- names(all[,sapply(all,is.character)])
