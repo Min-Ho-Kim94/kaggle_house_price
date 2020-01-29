@@ -781,7 +781,7 @@ rmse(validation0$SalePrice, preds_lasso0) #estimated test mse
 ```
 
 ## predicting house price in test set
-
+ 
 ### lasso
 
 ```{r}
