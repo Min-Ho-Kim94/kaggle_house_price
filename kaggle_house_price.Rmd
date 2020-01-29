@@ -137,8 +137,7 @@ all$PoolQC[is.na(all$PoolQC)] <- 'None'
 
 ```{r}
 library(plyr) #plyr::revalue()
-Qualities <- c('None'=0, 'Po'=1, "Fa"=2, "TA"=3, "Gd"=4, "Ex"=5)
-all$PoolQC <- as.integer(revalue(all$PoolQC, replace=Qualities))
+
 table(all$PoolQC)
 ```
 
@@ -207,10 +206,6 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=Fence, y=SalePrice)) +
 ```{r}
 all %>% group_by(FireplaceQu) %>% summarize(count(FireplaceQu))
 all$FireplaceQu[is.na(all$FireplaceQu)] <- 'None'
-# Qualities None   Po   Fa   TA   Gd   Ex 
-#             0    1    2    3    4    5 
-
-all$FireplaceQu <- as.integer(revalue(all$FireplaceQu , replace=Qualities))
 ```
  
 ```{r}
@@ -253,7 +248,7 @@ for (i in 1:nrow(all)){
 No NAs. Values seem ordinal (Regular=best)
 
 ```{r}
-all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
+
 table(all$LotShape)
 sum(table(all$LotShape))
 ```
@@ -325,22 +320,18 @@ NAs(all[,grep("^Garage",names(all))])
        
 차고가 없음은 NA에서 No Garage 으로 바꿔주었다.
 
-
 ```{r}
 all$GarageType[is.na(all$GarageType)] <- 'No Garage'
-all$GarageType <- as.character(all$GarageType)
+#all$GarageType <- as.character(all$GarageType)
 table(all$GarageType)
 ```
 
 **GarageFinish**
 
-차고 인테리어 마감 정도는 순서형(ordinal) 이므로 순서형으로 코딩하였다.
 
 ```{r}
 all$GarageFinish[is.na(all$GarageFinish)] <- 'None'
-Finish <- c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)
 
-all$GarageFinish<-as.integer(revalue(all$GarageFinish, Finish))
 table(all$GarageFinish)
 ```
 
@@ -348,7 +339,7 @@ table(all$GarageFinish)
        
 ```{r}
 all$GarageQual[is.na(all$GarageQual)] <- 'None'
-all$GarageQual<-as.integer(revalue(all$GarageQual, Qualities))
+
 table(all$GarageQual)
 ```
 
@@ -357,7 +348,7 @@ table(all$GarageQual)
 
 ```{r}
 all$GarageCond[is.na(all$GarageCond)] <- 'None'
-all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
+
 table(all$GarageCond)
 ```
 
@@ -393,23 +384,21 @@ all$BsmtQual[c(2218, 2219)] <- names(sort(-table(all$BsmtQual)))[1]
 
 ```{r}
 all$BsmtQual[is.na(all$BsmtQual)] <- 'None'
-all$BsmtQual<-as.integer(revalue(all$BsmtQual, Qualities))
+
 table(all$BsmtQual)
 ```
 		
 **BsmtCond**
 ```{r}
 all$BsmtCond[is.na(all$BsmtCond)] <- 'None'
-all$BsmtCond<-as.integer(revalue(all$BsmtCond, Qualities))
+
 table(all$BsmtCond)
 ```
 	
 **BsmtExposure**
 ```{r}
 all$BsmtExposure[is.na(all$BsmtExposure)] <- 'None'
-Exposure <- c('None'=0, 'No'=1, 'Mn'=2, 'Av'=3, 'Gd'=4)
 
-all$BsmtExposure<-as.integer(revalue(all$BsmtExposure, Exposure))
 table(all$BsmtExposure)
 ```
        
@@ -417,9 +406,9 @@ table(all$BsmtExposure)
 
 ```{r}
 all$BsmtFinType1[is.na(all$BsmtFinType1)] <- 'None'
-FinType <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
 
-all$BsmtFinType1<-as.integer(revalue(all$BsmtFinType1, FinType))
+
+
 table(all$BsmtFinType1)
 ```
 
@@ -427,7 +416,7 @@ table(all$BsmtFinType1)
 
 ```{r}
 all$BsmtFinType2[is.na(all$BsmtFinType2)] <- 'None'
-all$BsmtFinType2<-as.integer(revalue(all$BsmtFinType2, FinType))
+
 table(all$BsmtFinType2)
 ```
 
@@ -537,6 +526,25 @@ multiplot(g1,g2,g3,g4,g6,g7,g8,g5, cols = 2)
 ```
 
 
+```{r}
+table(all$MSZoning)
+table(all$Utilities) # removing
+table(all$Functional)
+table(all$Exterior1st)
+table(all$Exterior2nd)
+table(all$Electrical)
+table(all$KitchenQual)
+table(all$SaleType)
+```
+
+Utilites의 경우 대부분 ALLPUb (All public utilites - 전기,가스, 수도시설) 이므로 예측변수로 사용하기에 적합하지 않았다. 따라서 제외시켰다.
+
+```{r}
+all$Utilities <- NULL
+```
+
+
+
 KitchenQual을 제외한 7개 변수들은 하나의 level에 압도적인 빈도를 가지고 있었다. 따라서 최빈값으로 보정하였고, 
 
 ```{r}
@@ -548,7 +556,6 @@ names(sort(-table(all[all$KitchenAbvGr==1,"KitchenQual"])))[1]
 ```{r}
 all$MSZoning[is.na(all$MSZoning)] <- names(sort(-table(all[,"MSZoning"])))[1]
 all$Electrical[is.na(all$Electrical)] <- names(sort(-table(all[,"Electrical"])))[1]
-all$Utilities[is.na(all$Utilities)] <- names(sort(-table(all[,"Utilities"])))[1]
 all$Functional[is.na(all$Functional)] <- names(sort(-table(all[,"Functional"])))[1]
 all$SaleType[is.na(all$SaleType)] <- names(sort(-table(all[,"SaleType"])))[1]
 all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all[,"Exterior1st"])))[1]
@@ -556,7 +563,7 @@ all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(-table(all[,"Exterior2nd"]
 
 all[1556,"KitchenQual"] <- "TA"
 
-all$KitchenQual<-as.integer(revalue(all$KitchenQual,  Qualities))
+
 ```
 
 ```{r}
@@ -565,6 +572,43 @@ sum(complete.cases(subset(all, select=-c(SalePrice))))
 which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
 ```
 
+
+
+
+```{r}
+# revalue : ordinal variables
+Qualities <- c('None'=0, 'Po'=1, "Fa"=2, "TA"=3, "Gd"=4, "Ex"=5)
+Exposure <- c('None'=0, 'No'=1, 'Mn'=2, 'Av'=3, 'Gd'=4)
+FinType <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
+
+all$PoolQC <- as.integer(revalue(all$PoolQC, replace=Qualities))
+all$FireplaceQu <- as.integer(revalue(all$FireplaceQu , replace=Qualities))
+all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
+
+
+#Garage
+all$GarageFinish<-as.integer(revalue(all$GarageFinish, c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)))
+all$GarageQual<-as.integer(revalue(all$GarageQual, Qualities))
+all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
+
+#Basement
+all$BsmtQual<-as.integer(revalue(all$BsmtQual, Qualities))
+all$BsmtCond<-as.integer(revalue(all$BsmtCond, Qualities))
+all$BsmtExposure<-as.integer(revalue(all$BsmtExposure, Exposure))
+all$BsmtFinType1<-as.integer(revalue(all$BsmtFinType1, FinType))
+all$BsmtFinType2<-as.integer(revalue(all$BsmtFinType2, FinType))
+
+#others
+all$KitchenQual<-as.integer(revalue(all$KitchenQual, Qualities))
+all$ExterQual<-as.integer(revalue(all$ExterQual, Qualities))
+all$ExterCond<-as.integer(revalue(all$ExterCond, Qualities))
+all$HeatingQC<-as.integer(revalue(all$HeatingQC, Qualities))
+all$Fence<-as.integer(revalue(all$Fence, c("None"=0, "MnWw"=1, "GdWo"=2, "MnPrv"=3, "GdPrv"=4)))
+all$PavedDrive<-as.integer(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
+all$LandContour <- as.integer(revalue(all$LandContour, c("Low"=0, "HLS"=1, "Bnk"=2, "Lvl"=3)))
+all$LandSlope <- as.integer(revalue(all$LandSlope, c("Sev"=0, "Mod"=1, "Gtl"=2)))
+
+```
 
 
 
@@ -578,10 +622,7 @@ chrvar <- names(all[,sapply(all,is.character)])
 chrvar
 numvar <- names(all[,sapply(all,is.numeric)])
 numvar
-facvar <- names(all[,sapply(all,is.factor)])
-facvar
-
-sum(length(chrvar),length(numvar),length(facvar)) #81
+sum(length(chrvar),length(numvar)) #81
 ```
 
 **numeric class**
@@ -593,7 +634,7 @@ corhigh <- names(which(apply(cor_sort,1,function(x) abs(x)>0.5)))
 
 cor <- cor[corhigh,corhigh]
 
-corrplot.mixed(cor,tl.col="black", tl.pos = "lt")
+corrplot.mixed(cor,tl.col="black", tl.pos = "lt", tl.cex=0.7, cl.cex=0.7, number.cex=.7)
 ```
 
 SalePrice에 관련해서 가장 correlation이 높은 변수는 OverallQual, TotalSF, GrLivArea, GarageCars, ExterQual 등 순이었다. 그 중 GarageCars와 GarageArea는 0.89로 모든 변수들 중 가장 높은 corr을 가졌고, GrLivArea와 TotRmsAbvGrd도 0.81로 corr이 높았다.
@@ -639,12 +680,7 @@ all$MoSold = as.character(all$MoSold)
 
 순서형 변수들은 level대로 인코딩해준다. 
 ```{r}
-all$ExterQual<-as.integer(revalue(all$ExterQual,  Qualities))
-all$ExterCond<-as.integer(revalue(all$ExterCond,  Qualities))
-all$HeatingQC<-as.integer(revalue(all$HeatingQC,  Qualities))
 
-all$Fence<-as.integer(revalue(all$Fence, c("None"=0, "MnWw"=1, "GdWo"=2, "MnPrv"=3, "GdPrv"=4)))
-all$PavedDrive<-as.integer(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
 ```
 
 
@@ -677,6 +713,7 @@ all <- all[-c(524,1299),]
 dummies <- as.data.frame(model.matrix(~.-1, all[,names(all) %in% chrvar]))
 
 all <- cbind(all[,names(all) %in% numvar], dummies)
+dim(all)
 ```
 
 
@@ -695,48 +732,82 @@ qqline(all$SalePrice)
 ```
 
 
-# modeling   
+# modeling step
 
-```{r}
-dim(all)
-all2 <- all[,!(names(all) %in% "SalePrice")]
-training <- all2[!is.na(all$SalePrice),]
-testing <- all2[is.na(all$SalePrice),]
-```
-
-
-## lasso
+## spliting validation set for estimating test MSE
 
 ```{r}
 set.seed(191102)
-control <- trainControl(method="cv", number=10)
-lassogrid <- expand.grid(
-  alpha=1, lambda=seq(0.001, 0.1, by=0.0005)
-) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
+dim(all)
+
+train1 <- all[!is.na(all$SalePrice),]
+test1 <- all[is.na(all$SalePrice),]
+
+idx <- createDataPartition(y=train1$SalePrice, p=0.7, list=F)
+train0 <- train1[idx,]
+validation0 <- train1[-idx,]
+
+dim(train1)
+dim(test1)
+dim(train0)
+dim(validation0)
+```
+
+
+### lasso
+
+```{r}
+#control <- trainControl(method="cv", number=10)
+#lassogrid <- expand.grid(
+#  alpha=1, lambda=seq(0.001, 0.1, by=0.0005)
+#) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
 
 # caret::train()
-#lasso_model <- train(x=training, y=all$SalePrice[!is.na(all$SalePrice)], method = "glmnet", trControl="control", tuneGrid="lassogrid")
-
+#\lasso_model <- train(x=training, y=all$SalePrice[!is.na(all$SalePrice)], method = "glmnet", trControl="control", tuneGrid="lassogrid")
 ```
 
 ```{r}
 # glmnet::cv.glmnet()
-lasso_model <- cv.glmnet(as.matrix(training), all$SalePrice[!is.na(all$SalePrice)])
+# data.matrix : dataframe to matrix // as.matrix : data.table to matrix
+lasso_model0 <- cv.glmnet(data.matrix(train0[,-which(names(all)=="SalePrice")]), train0[,which(names(all)=="SalePrice")])
+lasso_model0$lambda.min
 
-preds_lasso <- predict(lasso_model, newx = as.matrix(testing), s="lambda.min")
+preds_lasso0 <- predict(lasso_model0, newx = data.matrix(validation0[,-which(names(all)=="SalePrice")]), s="lambda.min")
+head(exp(preds_lasso0))
+```
+
+```{r}
+rmse(validation0$SalePrice, preds_lasso0) #estimated test mse
+```
+
+## predicting house price in test set
+
+### lasso
+
+```{r}
+# glmnet::cv.glmnet()
+# data.matrix : dataframe to matrix // as.matrix : data.table to matrix
+lasso_model <- cv.glmnet(data.matrix(train1[,-which(names(all)=="SalePrice")]), train1[,which(names(all)=="SalePrice")])
+
+preds_lasso <- predict(lasso_model, newx = data.matrix(test1[,-which(names(all)=="SalePrice")]), s="lambda.min")
 head(exp(preds_lasso))
 ```
 
 ```{r}
-#sub <- data.frame(Id=)
+preds <- exp(preds_lasso)
+sub1 <- data.frame(Id = testID, SalePrice = preds)
+colnames(sub1) <- c("Id","SalePrice")
+head(sub1)
 ```
 
 
 
 ```{r}
-#write.csv(preds_lasso, file="submission.csv", row.names = F)
+write.csv(sub, file="submission.csv", row.names = F)
 ```
 
+
+200130 - first (lasso/ no normalizing): scroe 0.12724
 
 
 
