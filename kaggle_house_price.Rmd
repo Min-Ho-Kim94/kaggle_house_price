@@ -210,11 +210,10 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=FireplaceQu, y=SalePrice)) +
 ```
 벽난로는 퀄리티가 증가할수록 SalePrice가 증가하는 경향을 가지는 것을 알 수 있었다.
 
-### lot features
 
-#### LotFrontage : linear feet of street connected to property 
+### LotFrontage 
 
-LotFrontage는 집 앞에 연결된 거리의 크기를 나타내는데,  
+LotFrontage는 집 앞에 연결된 거리의 크기를 나타내는데, 486개의 결측은 근처 주요 건물(Physical location)을 나타내는 Neighborhood 변수와 관련이 있어 보였다. 각 Neighborhood의 범주에 따라 LotFrontage의 중앙값을 살펴보았다. LotFrontage가 조금 right-skewed된 경향이 있어 중앙값을 사용하였다.
 ```{r}
 #table(all$LotFrontage, useNA = "always")
 
@@ -224,13 +223,13 @@ ggplot(all, aes(x=LotFrontage)) +
   
 ```
 
-486 NAs. The most reasonable imputation seems to take the median per neigborhood.
 
 ```{r}
 ggplot(all[!is.na(all$LotFrontage),], aes(x=as.factor(Neighborhood), y=LotFrontage)) +
         geom_bar(stat='summary', fun.y = "median", fill='deepskyblue3') +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+Neighborhood의 범주 중 LotFrontage가 높은 곳의 중앙값은 약 90에 가까웠고 (NridgHt) 낮은 곳의 중앙값은 약 22였다 (BrDale). 따라서 Neighborhood의 각 범주에서의 LotFrontage의 중앙값으로 결측을 보정하였다.
 
 ```{r}
 for (i in 1:nrow(all)){
@@ -240,28 +239,17 @@ for (i in 1:nrow(all)){
 }
 ```
 
-**LotShape: General shape of property**
 
-No NAs. Values seem ordinal (Regular=best)
-
-```{r}
-
-table(all$LotShape)
-sum(table(all$LotShape))
-```
-
-
-### Garage 
+### Garages 
 
 ```{r}
-NAs(all[,names(all) %in% names(all)[grep("Garage", names(all))]])
+# same to : NAs(all[,names(all) %in% names(all)[grep("Garage", names(all))]])
 NAs(all[,grep("^Garage",names(all))])
 ```
 
-
 Garage에 관련된 변수는 총 7개로 GarageType, GarageYrBlt, GarageFinish, GarageCars, GarageArea, GarageQual, GaragaCond이다. 각각은 다 결측이 있었으므로 imputation을 실행하기로 했다. 
 
-grep 함수와 NAs 함수로 Garage로 시작하는 변수의 NA 개수를 반환하게 한다.
+    grep 함수와 NAs 함수로 Garage로 시작하는 변수의 NA 개수를 반환하게 한다.
 
 **GarageYrBlt**
 
@@ -272,27 +260,30 @@ nrow(all)
 c(length(which(all$YearBuilt==all$YearRemodAdd)), length(which(all$YearBuilt==all$YearRemodAdd))/nrow(all))
 c(length(which(all$YearBuilt==all$GarageYrBlt)), length(which(all$YearBuilt==all$GarageYrBlt))/nrow(all))
 ```
-전체 2919중 집이 지어진 연도와 리모델링 연도가 같은 데이터는 1560개로 전체 53%이고 (즉 리모델링하지 않은 집이 53%), 집을 지을때 차고를 같이 지은 집은 2216개로 전체 약 75%였다. 따라서 159개의 GarageYrBlt 결측치는 집을 지을 때 차고도 같이 지었다고 imputation 하였다. 즉,
+전체 2919중 집이 지어진 연도와 리모델링 연도가 같은 데이터는 1560개로 전체 53%이고 (즉 리모델링하지 않은 집이 53%), 집을 지을때 차고를 같이 지은 집은 2216개로 전체 약 75%였다. 집이 지어질 때 차고도 같이 짓는 경우가 많고, 집을 리모델링 할때 차고도 리모델링 하는 경우는 적다고 판단하여 159개의 GarageYrBlt 결측치는 집을 지을 때 차고도 같이 지었다고, 즉 GarageYrBlt==YearBuilt로 imputation 하였다.
 
 ```{r}
 all$GarageYrBlt[is.na(all$GarageYrBlt)] <- all$YearBuilt[is.na(all$GarageYrBlt)]
 ```
 
-**GarageCars, GarageArea**
+** GarageType, GarageFinish, GarageCond, GarageQual, GarageCars, GarageArea **
 
-다음으로, GarageType은 157개의 결측인데, 다른 159개의 결측치와 다른 2개가 무엇인지 데이터 탐색을 실행해보았다.
+다음으로, GarageType은 157개의 결측인데, 다른 159개의 결측치와 다른 2개가 무엇인지 데이터 탐색해보았다.
 
 ```{r}
+# type, finish, cond, qual
 length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageCond) & is.na(all$GarageQual)))
 
-all[!is.na(all$GarageType) & is.na(all$GarageFinish), c('GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')]
+all[!is.na(all$GarageType) & is.na(all$GarageFinish), 
+    c('GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')]
 ```
+159개 중 157개는 모두 NA 였다.
 
-2127와 2577번 째 관찰값은 GarageCond, GarageQual, GarageFinish가 결측임에도 불구하고 GarageType이 Detchd로 값이 존재했다. 또한 2577은 GarageCars, GarageArea도 결측이었다. 2127은 차고가 있는 것, 2577은 차고가 없는 것으로 판단하여 2127에 GarageCond, GarageQual, GarageFinish를 보정하였고, 2577의 GarageType은 NA로 대체하였다.
 
+2127와 2577번 째 관찰값은 GarageCond, GarageQual, GarageFinish가 결측임에도 불구하고 GarageType이 Detchd로 값이 존재했다. 또한 2577은 GarageCars, GarageArea도 결측이었다. 2127은 차고가 있는 것, 2577은 차고가 없는 것으로 판단하여 2127에 GarageCond, GarageQual, GarageFinish의 mode로 보정하였고, 2577의 GarageType(Detchd)은 NA로 대체하였다.
 
 ```{r}
-#modes.
+#2127
 all$GarageCond[2127] <- names(sort(-table(all$GarageCond)))[1]
 all$GarageQual[2127] <- names(sort(-table(all$GarageQual)))[1]
 all$GarageFinish[2127] <- names(sort(-table(all$GarageFinish)))[1]
@@ -301,6 +292,7 @@ all[2127, c('GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageType', 'GarageCond
 ```
 
 ```{r}
+#2577
 all$GarageCars[2577] <- 0
 all$GarageArea[2577] <- 0
 all$GarageType[2577] <- NA
@@ -308,63 +300,53 @@ all$GarageType[2577] <- NA
 all[2577, c('GarageYrBlt', 'GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')]
 
 length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageCond) & is.na(all$GarageQual)))
+
 NAs(all[,grep("^Garage",names(all))])
 ```
-
-
-
-**GarageType**
-       
-차고가 없음은 NA에서 No Garage 으로 바꿔주었다.
+나머지 157+1개에 대해서는 차고가 없는 것으로 보정하였다.
+차고가 없음은 NA에서 No Garage, None 으로 바꿔주었다.
 
 ```{r}
 all$GarageType[is.na(all$GarageType)] <- 'No Garage'
-#all$GarageType <- as.character(all$GarageType)
-table(all$GarageType)
+table(all$GarageType, useNA="always")
 ```
-
-**GarageFinish**
-
 
 ```{r}
 all$GarageFinish[is.na(all$GarageFinish)] <- 'None'
-
-table(all$GarageFinish)
+table(all$GarageFinish, useNA="always")
 ```
 
-**GarageQual**
-       
 ```{r}
 all$GarageQual[is.na(all$GarageQual)] <- 'None'
-
-table(all$GarageQual)
+table(all$GarageQual, useNA="always")
 ```
-
-**GarageCond**
-
 
 ```{r}
 all$GarageCond[is.na(all$GarageCond)] <- 'None'
-
-table(all$GarageCond)
+table(all$GarageCond, useNA="always")
 ```
+
 
 
 
 ### Basement Variables
 
+
 ```{r}
 NAs(all[,grep("Bsmt",names(all))])
 ```
 
-먼저 "BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2" 5개 변수가 같은 NA를 가지는 행인지 알아보고, 그렇지 않은 행을 추출해보면,
+
+**BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2**
+
+먼저 "BsmtQual, BsmtCond, BsmtExposure, BsmtFinType1, BsmtFinType2" 5개 변수에 79개 NA가 같은 NA를 가지는 행인지 알아보고, 그렇지 않은 행을 추출해보면,
 ```{r}
-##### highlight
 length(which(is.na(all$BsmtQual) & is.na(all$BsmtCond) & is.na(all$BsmtExposure) & is.na(all$BsmtFinType1) & is.na(all$BsmtFinType2)))
 
 all[!is.na(all$BsmtFinType1) & (is.na(all$BsmtCond)|is.na(all$BsmtQual)|is.na(all$BsmtExposure)|is.na(all$BsmtFinType2)), 
     c('BsmtQual', 'BsmtCond', 'BsmtExposure', 'BsmtFinType1', 'BsmtFinType2')] 
 ```
+
 BsmtFinType1의 79개는 "BsmtQual, BsmtCond, BsmtExposurem BsmtFinType1m BsmtFinType2" 모두 NA 이고, 부분적으로  NA가 존재한 9개 관찰값의 각 NA를 각 변수의 최빈값으로 보정해주었다.
 ```{r}
 #Imputing modes.
@@ -376,47 +358,32 @@ all$BsmtQual[c(2218, 2219)] <- names(sort(-table(all$BsmtQual)))[1]
 
 이제 공통적인 79개에 대한 결측치를 보정한다. 79개는 모두 Bsmt에 관련된 변수에 NA였다. 따라서 이 집들은 Bsmt(지하실)이 없는 집이라고 가정하여 결측치 보정을 시행하였다.
 
-**BsmtQual**
-앞서 정의한 Qualities 벡터 (level을 나타냄)를 이용하여 정수로 releveling하였다. 
-
 ```{r}
 all$BsmtQual[is.na(all$BsmtQual)] <- 'None'
-
-table(all$BsmtQual)
+table(all$BsmtQual, useNA = "always")
 ```
 		
-**BsmtCond**
 ```{r}
 all$BsmtCond[is.na(all$BsmtCond)] <- 'None'
-
-table(all$BsmtCond)
+table(all$BsmtCond, useNA = "always")
 ```
-	
-**BsmtExposure**
+
 ```{r}
 all$BsmtExposure[is.na(all$BsmtExposure)] <- 'None'
-
-table(all$BsmtExposure)
+table(all$BsmtExposure, useNA = "always")
 ```
-       
-**BsmtFinType1**
-
+      
 ```{r}
 all$BsmtFinType1[is.na(all$BsmtFinType1)] <- 'None'
-
-
-
-table(all$BsmtFinType1)
+table(all$BsmtFinType1, useNA = "always")
 ```
-
-**BsmtFinType2**
 
 ```{r}
 all$BsmtFinType2[is.na(all$BsmtFinType2)] <- 'None'
-
-table(all$BsmtFinType2)
+table(all$BsmtFinType2, useNA = "always")
 ```
 
+**BsmtFullBath(2), BsmtHalfBath(2), BsmtFinSF1(1), BsmtFinSF2(1), BsmtUnfSF(1), TotalBsmtSF(1)**
 
 이제 "BsmtFullBath(2), BsmtHalfBath(2), BsmtFinSF1(1), BsmtFinSF2(1), BsmtUnfSF(1), TotalBsmtSF(1)" 6개 변수에 대해 살펴보면,
 
@@ -458,6 +425,7 @@ NAs(all[,grep("Bsmt", names(all))])
 
 
 ### Mansonry veneer
+
 석조부분 베니어판을 의미한다. 건물 외벽에 석조 베니어판이 있는 경우.
 
 ```{r}
@@ -478,7 +446,7 @@ ggplot(all, aes(x=MasVnrType)) +
 ggplot(all, aes(x=MasVnrArea)) +
   geom_histogram(fill="deepskyblue3", na.rm = T, binwidth=30)
 
-table(all$MasVnrType)
+table(all$MasVnrType, useNA = "always")
 summary(all$MasVnrArea)
 ```
 
@@ -540,8 +508,6 @@ Utilites의 경우 대부분 ALLPUb (All public utilites - 전기,가스, 수도
 all$Utilities <- NULL
 ```
 
-
-
 KitchenQual을 제외한 7개 변수들은 하나의 level에 압도적인 빈도를 가지고 있었다. 따라서 최빈값으로 보정하였고, 
 
 ```{r}
@@ -559,8 +525,6 @@ all$Exterior1st[is.na(all$Exterior1st)] <- names(sort(-table(all[,"Exterior1st"]
 all$Exterior2nd[is.na(all$Exterior2nd)] <- names(sort(-table(all[,"Exterior2nd"])))[1]
 
 all[1556,"KitchenQual"] <- "TA"
-
-
 ```
 
 ```{r}
@@ -570,69 +534,92 @@ which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs
 ```
 
 
-
+이제 결측치 처리는 완료되었고, data description에 나타난대로 정수로 encoding이 필요한 변수들을 encoding하였다.
 
 ```{r}
-# revalue : ordinal variables
+# revalue 
 Qualities <- c('None'=0, 'Po'=1, "Fa"=2, "TA"=3, "Gd"=4, "Ex"=5)
 Exposure <- c('None'=0, 'No'=1, 'Mn'=2, 'Av'=3, 'Gd'=4)
 FinType <- c('None'=0, 'Unf'=1, 'LwQ'=2, 'Rec'=3, 'BLQ'=4, 'ALQ'=5, 'GLQ'=6)
 
-all$PoolQC <- as.integer(revalue(all$PoolQC, replace=Qualities))
-all$FireplaceQu <- as.integer(revalue(all$FireplaceQu , replace=Qualities))
-all$LotShape<-as.integer(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
-
+all$PoolQC <- as.factor(revalue(all$PoolQC, replace=Qualities))
+all$FireplaceQu <- as.factor(revalue(all$FireplaceQu , replace=Qualities))
+all$LotShape<-as.factor(revalue(all$LotShape, c('IR3'=0, 'IR2'=1, 'IR1'=2, 'Reg'=3)))
 
 #Garage
-all$GarageFinish<-as.integer(revalue(all$GarageFinish, c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)))
-all$GarageQual<-as.integer(revalue(all$GarageQual, Qualities))
-all$GarageCond<-as.integer(revalue(all$GarageCond, Qualities))
+all$GarageFinish<-as.factor(revalue(all$GarageFinish, c('None'=0, 'Unf'=1, 'RFn'=2, 'Fin'=3)))
+all$GarageQual<-as.factor(revalue(all$GarageQual, Qualities))
+all$GarageCond<-as.factor(revalue(all$GarageCond, Qualities))
 
 #Basement
-all$BsmtQual<-as.integer(revalue(all$BsmtQual, Qualities))
-all$BsmtCond<-as.integer(revalue(all$BsmtCond, Qualities))
-all$BsmtExposure<-as.integer(revalue(all$BsmtExposure, Exposure))
-all$BsmtFinType1<-as.integer(revalue(all$BsmtFinType1, FinType))
-all$BsmtFinType2<-as.integer(revalue(all$BsmtFinType2, FinType))
+all$BsmtQual<-as.factor(revalue(all$BsmtQual, Qualities))
+all$BsmtCond<-as.factor(revalue(all$BsmtCond, Qualities))
+all$BsmtExposure<-as.factor(revalue(all$BsmtExposure, Exposure))
+all$BsmtFinType1<-as.factor(revalue(all$BsmtFinType1, FinType))
+all$BsmtFinType2<-as.factor(revalue(all$BsmtFinType2, FinType))
 
 #others
-all$KitchenQual<-as.integer(revalue(all$KitchenQual, Qualities))
-all$ExterQual<-as.integer(revalue(all$ExterQual, Qualities))
-all$ExterCond<-as.integer(revalue(all$ExterCond, Qualities))
-all$HeatingQC<-as.integer(revalue(all$HeatingQC, Qualities))
-all$Fence<-as.integer(revalue(all$Fence, c("None"=0, "MnWw"=1, "GdWo"=2, "MnPrv"=3, "GdPrv"=4)))
-all$PavedDrive<-as.integer(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
-all$LandContour <- as.integer(revalue(all$LandContour, c("Low"=0, "HLS"=1, "Bnk"=2, "Lvl"=3)))
-all$LandSlope <- as.integer(revalue(all$LandSlope, c("Sev"=0, "Mod"=1, "Gtl"=2)))
+all$KitchenQual<-as.factor(revalue(all$KitchenQual, Qualities))
+all$ExterQual<-as.factor(revalue(all$ExterQual, Qualities))
+all$ExterCond<-as.factor(revalue(all$ExterCond, Qualities))
+all$HeatingQC<-as.factor(revalue(all$HeatingQC, Qualities))
+all$Fence<-as.factor(revalue(all$Fence, c("None"=0, "MnWw"=1, "GdWo"=2, "MnPrv"=3, "GdPrv"=4)))
+all$PavedDrive<-as.factor(revalue(all$PavedDrive,  c("N"=0, "P"=1, "Y"=2)))
+all$LandContour <- as.factor(revalue(all$LandContour, c("Low"=0, "HLS"=1, "Bnk"=2, "Lvl"=3)))
+all$LandSlope <- as.factor(revalue(all$LandSlope, c("Sev"=0, "Mod"=1, "Gtl"=2)))
 
 ```
 
+## feature engineering
+### Remodel Y/N
+```{r}
+all$Remodel <- ifelse(all$YearBuilt==all$YearRemodAdd, 0,1)
+table(all$Remodel, useNA = "always") #all
+table(all[!is.na(all$SalePrice),]$Remodel, useNA = "always") #train
+
+all$YearRemodAdd <- NULL
+all$Remodel <- as.factor(all$Remodel)
+```
+
+### New house Y/N
+```{r}
+all$Newhouse <- ifelse(all$YrSold==all$YearBuilt, 1,0)
+table(all$Newhouse, useNA = "always") #all
+table(all[!is.na(all$SalePrice),]$Newhouse, useNA = "always") #train
+
+all$Newhouse <- as.factor(all$Newhouse)
+```
 
 
 
 ## feature analysis
 
+아래 5개 변수는 factor로 변형해준다.
+```{r}
+all$MSSubClass = as.factor(all$MSSubClass)
+all$OverallQual = as.factor(all$OverallQual)
+all$OverallCond = as.factor(all$OverallCond)
+all$YrSold = as.factor(all$YrSold)
+all$MoSold = as.factor(all$MoSold)
+```
+
 all에 feature class별로 분류하면, 
 
 ```{r}
-chrvar <- names(all[,sapply(all,is.character)])
+chrvar <- names(all[,!(sapply(all,is.numeric))])
 numvar <- names(all[,sapply(all,is.numeric)])
-sum(length(chrvar),length(numvar)) #81
+sum(length(chrvar),length(numvar)) 
 ```
 
 ```{r}
 chrvar
+length(chrvar)
 ```
 
 ```{r}
 numvar
+length(numvar)
 ```
-
-
-```{r}
-# 여기에 잘못 분류한 변수들을 바로잡는 코딩
-```
-
 
 
 ### correlation among numeric features
@@ -651,18 +638,18 @@ corrplot.mixed(cor,tl.col="black", tl.pos = "lt", tl.cex=0.7, cl.cex=0.7, number
 SalePrice에 관련해서 가장 correlation이 높은 변수는 OverallQual, TotalSF, GrLivArea, GarageCars, ExterQual 등 순이었다. 그 중 GarageCars와 GarageArea는 0.89로 모든 변수들 중 가장 높은 corr을 가졌고, GrLivArea와 TotRmsAbvGrd도 0.81로 corr이 높았다.
 
 
-SalePrice와 OverallQual 간 plot
+**OverallQual**
 ```{r}
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice))+
-        geom_boxplot(col='deepskyblue3') + labs(x='Overall Quality') +
+        geom_point(col='deepskyblue3') + labs(x='Overall Quality') +
         scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
 ```
 
 Overall Quality가 증가할수록 SalePrice가 점점 증가하는 꼴을 볼 수 있다.  
-OverallQual=4일 경우 이상치가 존재하는 것 같다. 
 
 
-SalePrice와 GrLivArea 간 plot 
+
+**GrLivArea**
 ```{r}
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
         geom_point(col='deepskyblue3') + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
@@ -676,45 +663,10 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
 all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")] #train data
 ```
 
-전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
+전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다. 이 두 값은 뒤에서 outlier로 제외시켰다.
 
-
-```{r}
-#all$TotalSF = all$TotalBsmtSF + all$X1stFlrSF + all$X2ndFlrSF
-#all <- subset(all, select=-c(TotalBsmtSF, X1stFlrSF, X2ndFlrSF))
-```
 
 ### character features
-
-아래 4개 변수는 char로 변형해준다.
-```{r}
-all$MSSubClass = as.character(all$MSSubClass)
-all$OverallQual = as.character(all$OverallQual)
-all$OverallCond = as.character(all$OverallCond)
-all$YrSold = as.character(all$YrSold)
-all$MoSold = as.character(all$MoSold)
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -725,12 +677,16 @@ all$MoSold = as.character(all$MoSold)
 all <- all[-c(524,1299),]
 ```
 
-## normalizating & skewness
+## normalizing 
+```{r}
+Normalizing <- preProcess(all[!is.na(all$SalePrice),numvar[c(which(numvar!="SalePrice"))]], method=c("center", "scale")) # calculating with train data wihtout "SalePrice" variable
+print(Normalizing)
 
+normnumerics <- predict(Normalizing, all[, numvar])
+```
 
 
 ## one-hot encodeing 
-
 ```{r}
 #dummies <- dummyVars(~., all[chrvar])
 #categorical_1_hot <- predict(dummies, all[chrvar])
@@ -740,7 +696,7 @@ dummies <- as.data.frame(model.matrix(~.-1, all[,names(all) %in% chrvar]))
 
 ## combining all features
 ```{r}
-all <- cbind(all[,names(all) %in% numvar], dummies)
+all <- cbind(normnumerics, dummies)
 dim(all)
 ```
 
@@ -771,7 +727,7 @@ test1 <- all[is.na(all$SalePrice),]
 
 idx <- createDataPartition(y=train1$SalePrice, p=0.7, list=F)
 train0 <- train1[idx,]
-validation0 <- train1[-idx,]
+validation0 <- train1[-idx,] #hold-out
 
 dim(train1)
 dim(test1)
@@ -783,14 +739,26 @@ dim(validation0)
 ### lasso
 
 ```{r}
-#control <- trainControl(method="cv", number=10)
-#lassogrid <- expand.grid(
-#  alpha=1, lambda=seq(0.001, 0.1, by=0.0005)
-#) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
-
-# caret::train()
-#\lasso_model <- train(x=training, y=all$SalePrice[!is.na(all$SalePrice)], method = "glmnet", trControl="control", tuneGrid="lassogrid")
+control <- trainControl(method="cv", number=10)
+lassogrid <- expand.grid(
+  alpha=1, 
+  lambda=seq(0.001, 0.1, by=0.0005)
+) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
 ```
+
+```{r}
+# caret::train()
+lasso_model0 <- train(SalePrice~., data=train0, method = "glmnet", trControl=control, tuneGrid=lassogrid)
+lasso_model0$bestTune
+
+preds_lasso0 <- predict(lasso_model0, validation0)
+head(exp(preds_lasso0))
+```
+
+```{r}
+rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3)
+```
+
 
 ```{r}
 # glmnet::cv.glmnet()
@@ -803,23 +771,95 @@ head(exp(preds_lasso0))
 ```
 
 ```{r}
-rmse(validation0$SalePrice, preds_lasso0) #estimated test mse
+rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3)
 ```
 
-## predicting house price in test set (final model)
+### randomforest
+caret package를 사용하였다.
+```{r}
+control <- trainControl(method="cv", number=10)
+rfgrid <- expand.grid(
+  mtry=sqrt(ncol(train0))
+)
+```
+
+```{r}
+rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid)
+rf_model0$bestTune
+
+preds_rf0 <- predict(rf_model0, validation0)
+head(exp(preds_rf0))
+```
+
+```{r}
+rmse(validation0$SalePrice, preds_rf0)
+```
+
+
+
+
+
+
+
+## predicting house price in test set (final model) 
 ### lasso
+
+```{r}
+control <- trainControl(method="cv", number=10)
+lassogrid <- expand.grid(
+  alpha=1, 
+  lambda=seq(0.001, 0.1, by=0.0005)
+) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
+```
+
+```{r}
+# caret::train()
+lasso_model1 <- train(SalePrice~., data=train1, method = "glmnet", trControl=control, tuneGrid=lassogrid)
+lasso_model1$bestTune
+
+preds_lasso1 <- predict(lasso_model1, test1)
+preds_lasso1 <- exp(preds_lasso1)
+head(preds_lasso1)
+```
 
 ```{r}
 # glmnet::cv.glmnet()
 # data.matrix : dataframe to matrix // as.matrix : data.table to matrix
-lasso_model <- cv.glmnet(data.matrix(train1[,-which(names(all)=="SalePrice")]), train1[,which(names(all)=="SalePrice")])
+#lasso_model <- cv.glmnet(data.matrix(train1[,-which(names(all)=="SalePrice")]), train1[,which(names(all)=="SalePrice")])
 
-preds_lasso <- predict(lasso_model, newx = data.matrix(test1[,-which(names(all)=="SalePrice")]), s="lambda.min")
-head(exp(preds_lasso))
+#preds_lasso <- predict(lasso_model, newx = data.matrix(test1[,-which(names(all)=="SalePrice")]), s="lambda.min")
+#head(exp(preds_lasso))
 ```
 
 ```{r}
-preds <- exp(preds_lasso)
+preds_lasso1 <- exp(preds_lasso1)
+sub_lasso <- data.frame(Id = testID, SalePrice = preds)
+colnames(sub_lasso) <- c("Id","SalePrice")
+head(sub_lasso)
+```
+
+### randomforest
+
+```{r}
+control <- trainControl(method="cv", number=10)
+rfgrid <- expand.grid(
+  mtry=sqrt(ncol(train1))
+)
+```
+
+```{r}
+rf_model1 <- train(SalePrice~., data=train1, method="rf", trcontrol=control, tuneGrid=rfgrid)
+rf_model1$bestTune
+
+preds_rf1 <- predict(rf_model1, test1)
+preds_rf1 <- exp(preds_rf1)
+head(preds_rf1)
+```
+
+### average preds
+
+```{r}
+preds <- (preds_lasso1+preds_rf1)/2
 sub1 <- data.frame(Id = testID, SalePrice = preds)
 colnames(sub1) <- c("Id","SalePrice")
 head(sub1)
@@ -827,14 +867,16 @@ head(sub1)
 
 
 
+
+# final submission step
+
 ```{r}
-write.csv(sub, file="submission.csv", row.names = F)
+write.csv(sub1, file="submission.csv", row.names = F)
 ```
 
-
-200130 - first (lasso/ no normalizing): scroe 0.12724
-
-
-
+seed : 191102
+200130 - first (lasso/ no normalizing): validation rmse : 0.115594, scroe 0.12724
+200131 - second(lasso / normalizing) : validation rmse : 0.1217173, score 0.12423
+200131 - third(lasso + rf / not weighted) : score 
 
   
