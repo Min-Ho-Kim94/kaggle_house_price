@@ -214,7 +214,7 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=FireplaceQu, y=SalePrice)) +
 
 #### LotFrontage : linear feet of street connected to property 
 
-LotFrontage는 집 앞에 연결된 거리의 크기를 나타내는데, 
+LotFrontage는 집 앞에 연결된 거리의 크기를 나타내는데,  
 ```{r}
 #table(all$LotFrontage, useNA = "always")
 
