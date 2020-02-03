@@ -856,7 +856,7 @@ preds_rf1 <- exp(preds_rf1)
 head(preds_rf1)
 ```
 
-### average preds 
+### average preds  
 
 ```{r}
 preds <- (preds_lasso1+preds_rf1)/2
