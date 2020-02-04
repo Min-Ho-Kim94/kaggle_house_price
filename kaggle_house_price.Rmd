@@ -34,6 +34,7 @@ library(Rmisc)
 library(corrplot)
 library(ggrepel)
 library(caret)
+library(gbm)
 library(xgboost)
 library(glmnet)
 library(Matrix)
@@ -693,9 +694,27 @@ normnumerics <- predict(Normalizing, all[, numvar])
 dummies <- as.data.frame(model.matrix(~.-1, all[,names(all) %in% chrvar]))
 ```
  
+데이터에서 관찰값이 없는 level들이거나 빈도가 10 이하인 변수로서 만들어진 predictor들을 찾아 이를 없앤다 (즉, variance가 0인 변수들: 예를 들어 train에서 MSSubClass가 150인 데이터는 train에서 없다. 따라서 train1$MSSubClass150은 모두 0이다.)
+```{r}
+#train
+rm1 <- which(colSums(dummies[!is.na(all$SalePrice),])<10)
+colnames(dummies[rm1])
+
+#test
+rm2 <- which(colSums(dummies[is.na(all$SalePrice),])<10)
+colnames(dummies[rm2])
+
+dummies <- dummies[,-rm1]
+dim(dummies)
+dummies <- dummies[,-rm2]
+dim(dummies)
+```
 
 ## combining all features
 ```{r}
+all2 <- cbind(normnumerics,all[,!(names(all) %in% names(normnumerics))]) #for caret::train - gbm 
+dim(all2) # no one-hot encoding
+
 all <- cbind(normnumerics, dummies)
 dim(all)
 ```
@@ -708,6 +727,7 @@ qqline(all$SalePrice)
 
 #logarithm
 all$SalePrice <- log(all$SalePrice)
+all2$SalePrice <- log(all2$SalePrice)
 
 skewness(all[!is.na(all$SalePrice),]$SalePrice)
 qqnorm(all$SalePrice)
@@ -734,6 +754,9 @@ dim(test1)
 dim(train0)
 dim(validation0)
 ```
+
+
+
 
 
 ### lasso
@@ -777,22 +800,21 @@ rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3)
 ### randomforest
 caret package를 사용하였다.
 ```{r}
-control <- trainControl(method="cv", number=10)
 rfgrid <- expand.grid(
   mtry=sqrt(ncol(train0))
 )
 ```
 
 ```{r}
-rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid)
-rf_model0$bestTune
+#rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid)
+#rf_model0$bestTune
 
-preds_rf0 <- predict(rf_model0, validation0)
-head(exp(preds_rf0))
+#preds_rf0 <- predict(rf_model0, validation0)
+#head(exp(preds_rf0))
 ```
 
 ```{r}
-rmse(validation0$SalePrice, preds_rf0)
+#rmse(validation0$SalePrice, preds_rf0)
 ```
 
 
@@ -841,7 +863,6 @@ head(sub_lasso)
 ### randomforest
 
 ```{r}
-control <- trainControl(method="cv", number=10)
 rfgrid <- expand.grid(
   mtry=sqrt(ncol(train1))
 )
@@ -856,10 +877,61 @@ preds_rf1 <- exp(preds_rf1)
 head(preds_rf1)
 ```
 
+### gradient boost
+
+```{r}
+train2 <- all2[!is.na(all2$SalePrice),] #NOT ONT-HOT ENCODING
+test2 <- all2[is.na(all2$SalePrice),]
+dim(train2)
+dim(test2)
+```
+
+
+```{r}
+gbgrid <- expand.grid(n.trees=(2:10)*50,
+                      shrinkage=c(0.01,0.05),
+                      interaction.depth=c(2,3),
+                      n.minobsinnode=10
+                      )
+metric <- "RMSE"
+```
+
+```{r}
+gb_model1 <- train(SalePrice~., data=train2, distribution="gaussian", method="gbm", trContol=control, tuneGrid=gbgrid, metric=metric, allowParallel=TRUE )
+```
+
+```{r}
+gb_model1 <- gbm(SalePrice~., data=train1, n.trees=100,
+                      shrinkage=0.1,
+                      n.minobsinnode=c(10),
+                      interaction.depth=3, distribution = "gaussian", cv.folds = 10)
+```
+
+```{r}
+
+gb_model1$bestTune
+```
+
+
+
 ### xgboost
 
 ```{r}
- 
+xgbgrid <- expand.grid(nrounds=750,
+                       eta=c(0.1,0.005,0.001),
+                       max_depth=c(4,6,8),
+                       colsample_bytree=c(0.1,10),
+                       min_child_weight=2,
+                       subsample=c(0,0.2,0.4,0.6),
+                       gamma=0.01)
+```
+
+```{r}
+xgb_model1 <- train(SalePrice~., data=train1, method="xgbTree", trContol=control, tuneGrid=xgbgrid, metric="RMSE", nthread=3)
+```
+
+```{r}
+xgb_model1$bestTune
 ```
 
 
