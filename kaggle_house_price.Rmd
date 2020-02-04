@@ -856,8 +856,14 @@ preds_rf1 <- exp(preds_rf1)
 head(preds_rf1)
 ```
 
-### average preds  
+### xgboost
 
+```{r}
+ 
+```
+
+
+### average preds  
 ```{r}
 preds <- (preds_lasso1+preds_rf1)/2
 sub1 <- data.frame(Id = testID, SalePrice = preds)
