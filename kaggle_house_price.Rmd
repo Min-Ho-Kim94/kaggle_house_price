@@ -67,6 +67,19 @@ skim(all)
 dim(all)
 ```
 
+```{r}
+names(all[,grep("Garage",names(all))])
+names(all[,grep("Bsmt",names(all))])
+names(all[,grep("Bath",names(all))])
+names(all[,grep("Pool",names(all))])
+names(all[,grep("Lot",names(all))])
+names(all[,grep("Exter",names(all))])
+names(all[,grep("Fire",names(all))])
+names(all[,grep("Flr",names(all))])
+names(all[,grep("Porch",names(all))])
+```
+
+
 # Exploring data analysis step 
 ## target variable : SalePrice
 ```{r}
@@ -91,9 +104,9 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=log(SalePrice))) +
 
 
 
-## features imputation  {.tabset}
+## variables imputation  {.tabset}
 
-이제 variables (features)를 살펴보기 전에, 결측값이 존재하는지 아닌지 알아보았다.
+이제 variables (variables)를 살펴보기 전에, 결측값이 존재하는지 아닌지 알아보았다.
 
 ```{r NAs}
 NAs <- function(df){
@@ -114,7 +127,7 @@ NAs(all)
 
 결측치가 없는 행의 개수를 출력할 때 complete.cases()를 사용한다.
 
-이제부터 결측이 있는 각 features를 깊게 살펴보고, 결측값을 보정한다.
+이제부터 결측이 있는 각 variables를 깊게 살펴보고, 결측값을 보정한다.
 
 ### Pool
 PoolQC : Pool quality
@@ -142,15 +155,15 @@ table(all$PoolQC)
 PoolArea 에 값이 있으면 PoolQC는 무조건 1 이상이어야 하지만, 0의 값을 갖는 값들이 있었다. 
 
 ```{r}
-all[all$PoolArea>0 & all$PoolQC=="None", c("PoolArea","PoolQC","OverallQual")]
+all[all$PoolArea>0 & all$PoolQC=="None", c("PoolArea","PoolQC")]
 ```
  
-이를 보정해주었다. OverallQual은 집의 전반적인 퀄리티를 나타내는 변수로, 이를 이용해 적절하게 보정하였다.
+
 
 ```{r}
-all$PoolQC[2421] <- "TA" #4 > Typical/Average
-all$PoolQC[2504] <- "Gd" #6 > Good
-all$PoolQC[2600] <- "TA" #3 > Typical/Average
+all$PoolQC[2421] <- 0 
+all$PoolQC[2504] <- 0 
+all$PoolQC[2600] <- 0 
 ```
  
 ### Miscellaneous features
@@ -571,7 +584,7 @@ all$LandSlope <- as.factor(revalue(all$LandSlope, c("Sev"=0, "Mod"=1, "Gtl"=2)))
 
 ```
 
-## feature engineering
+## variable engineering
 ### Remodel Y/N
 ```{r}
 all$Remodel <- ifelse(all$YearBuilt==all$YearRemodAdd, 0,1)
@@ -593,7 +606,7 @@ all$Newhouse <- as.factor(all$Newhouse)
 
 
 
-## feature analysis
+## variable analysis
 
 아래 5개 변수는 factor로 변형해준다.
 ```{r}
@@ -623,7 +636,7 @@ length(numvar)
 ```
 
 
-### correlation among numeric features
+### correlation among numeric variables
 
 수치형 변수가 SalePrice와 어느정도 상관관계가 있는지 알아보기 위해 corrplot을 그려보면,
 ```{r}
@@ -648,8 +661,6 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice)
 
 Overall Quality가 증가할수록 SalePrice가 점점 증가하는 꼴을 볼 수 있다.  
 
-
-
 **GrLivArea**
 ```{r}
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
@@ -667,8 +678,8 @@ all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")] #train data
 전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다. 이 두 값은 뒤에서 outlier로 제외시켰다.
 
 
-### character features
-
+### character variables
+ 
 
 
 # preparing data step
@@ -710,7 +721,7 @@ dummies <- dummies[,-rm2]
 dim(dummies)
 ```
 
-## combining all features
+## combining all variables
 ```{r}
 all2 <- cbind(normnumerics,all[,!(names(all) %in% names(normnumerics))]) #for caret::train - gbm 
 dim(all2) # no one-hot encoding
