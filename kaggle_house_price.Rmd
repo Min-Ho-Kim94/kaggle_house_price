@@ -877,7 +877,7 @@ preds_rf1 <- exp(preds_rf1)
 head(preds_rf1)
 ```
 
-### gradient boost
+### gradient boost 
 
 ```{r}
 train2 <- all2[!is.na(all2$SalePrice),] #NOT ONT-HOT ENCODING
