@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 kaggle address : https://www.kaggle.com/zizonpingu
 
-**목적** Ames 지방의 집값 예측을 위한 분석.
+**목적** 2006년부터 2010년간 Ames 지방의 주택 가격 데이터를 바탕으로 주택 가격 예측을 위한 분석.
 
 # library & Data load step
 
@@ -34,6 +34,7 @@ library(Rmisc)
 library(corrplot)
 library(ggrepel)
 library(caret)
+library(randomForest)
 library(gbm)
 library(xgboost)
 library(glmnet)
@@ -92,7 +93,7 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=log(SalePrice))) +
 
 
 
-## variables imputation  {.tabset}
+## variables imputation 
 
 이제 variables (variables)를 살펴보기 전에, 결측값이 존재하는지 아닌지 알아보았다.
 
@@ -467,6 +468,7 @@ all$MasVnrArea[is.na(all$MasVnrArea)] <- 0
 
 
 ### other variables
+
 ```{r}
 NAs(all)
 ```
@@ -535,6 +537,7 @@ all[1556,"KitchenQual"] <- "TA"
 ```
 
 ```{r}
+
 NAs(all)
 sum(complete.cases(subset(all, select=-c(SalePrice))))
 which(complete.cases(subset(all,select=-c(SalePrice)))==F) #obs of NAs 
@@ -578,7 +581,10 @@ all$LandSlope <- as.factor(revalue(all$LandSlope, c("Sev"=0, "Mod"=1, "Gtl"=2)))
 ```
 
 ## variable engineering
+
 ### Remodel Y/N
+
+집들 중에는 리모델링을 한 집이 있고 안한집이 있지만, 이를 나타내는 변수는 없고, 리모델링을 했다면 했던 연도만 표시하는 변수만 존재했다. 따라서 집 리모델링 유무를 나타내는 변수를 추가해보았다. 
 ```{r}
 all$Remodel <- ifelse(all$YearBuilt==all$YearRemodAdd, 0,1)
 table(all$Remodel, useNA = "always") #all
@@ -588,7 +594,23 @@ all$YearRemodAdd <- NULL
 all$Remodel <- as.factor(all$Remodel)
 ```
 
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=Remodel, y=SalePrice)) +
+  geom_point(col="deepskyblue3") + scale_y_continuous(breaks=seq(0, 900000, by=100000), labels=comma)
+
+mean(all$SalePrice[!all$Remodel=="0"], na.rm=T)
+mean(all$SalePrice[!all$Remodel=="1"], na.rm=T)
+```
+
+하지만 리모델링 유무에 따라 SalePrice 평균의 차이가 거의 없이 나타났다. 따라서 바로 제거하였다.
+
+```{r}
+all$Remodel <- NULL
+```
+
+
 ### New house Y/N
+
 ```{r}
 all$Newhouse <- ifelse(all$YrSold==all$YearBuilt, 1,0)
 table(all$Newhouse, useNA = "always") #all
@@ -597,11 +619,24 @@ table(all[!is.na(all$SalePrice),]$Newhouse, useNA = "always") #train
 all$Newhouse <- as.factor(all$Newhouse)
 ```
 
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=Newhouse, y=SalePrice)) +
+  geom_point(col="deepskyblue3") + scale_y_continuous(breaks=seq(0, 900000, by=100000), labels=comma)
+
+mean(all$SalePrice[!all$Newhouse=="0"], na.rm=T)
+mean(all$SalePrice[!all$Newhouse=="1"], na.rm=T)
+```
+
+지어진 집 바로 팔린 경우, SalePrice의 평균은 그렇지 않은 집보다 오히려 떨어졌다. 하지만 분산은 확실히 작음을 확인할 수 있었다. 이는 all$YrSold 즉, 2006년부터 2010년간 팔린 집들을 대상으로 하다보니, 2006년부터 2010년간 지어진 집은 확실히 전체 기간보다 비슷한 집들이 있을 가능성이 높기 때문이라 판단된다. 이 변수를 모형에 포함시키더라도 각 범주간  SalePrice에 차이를 내기 어렵다고 판단하여 제거하였다.
+
+```{r}
+all$Newhouse <- NULL
+```
 
 
 ## variable explanation
 
-아래 5개 변수는 factor로 변형해준다.
+아래 5개 변수는 범주형 변수로, factor로 변형해준다.
 ```{r}
 all$MSSubClass = as.factor(all$MSSubClass)
 all$OverallQual = as.factor(all$OverallQual)
@@ -631,28 +666,30 @@ length(numvar)
 
 ### correlation among numeric variables
 
-수치형 변수가 SalePrice와 어느정도 상관관계가 있는지 알아보기 위해 corrplot을 그려보면,
+수치형 변수가 SalePrice와 어느정도 상관관계가 있는지 알아보기 위해 correlation 절대값이 0.3이상인 corrplot을 그려보면,
 ```{r}
 cor <- cor(all[,numvar], use = "pairwise.complete.obs")
 cor_sort <- as.matrix(sort(cor[,'SalePrice'], decreasing = TRUE))
-corhigh <- names(which(apply(cor_sort,1,function(x) abs(x)>0.5)))
+corhigh <- names(which(apply(cor_sort,1,function(x) abs(x)>0.3)))
 
 cor <- cor[corhigh,corhigh]
 
-corrplot.mixed(cor,tl.col="black", tl.pos = "lt", tl.cex=0.7, cl.cex=0.7, number.cex=.7)
+corrplot.mixed(cor,tl.col="black", tl.pos = "lt", tl.cex=0.9, cl.cex=0.9, number.cex=.6)
 ```
 
-SalePrice에 관련해서 가장 correlation이 높은 변수는 OverallQual, TotalSF, GrLivArea, GarageCars, ExterQual 등 순이었다. 그 중 GarageCars와 GarageArea는 0.89로 모든 변수들 중 가장 높은 corr을 가졌고, GrLivArea와 TotRmsAbvGrd도 0.81로 corr이 높았다.
+SalePrice에 관련해서 가장 correlation이 높은 변수는 GrLivArea, GarageCars, GarageArea, TotalBsmtSF, X1stFlrSF와 등  순이었다. 그 중 GarageCars와 GarageArea는 0.89로 모든 변수들 중 가장 높은 corr을 가졌고, GaregeYrBlt와 YearBulit도 0.85, GrLivArea와 TotRmsAbvGrd도 0.81, X1stFlrSF와 TotalBsmtSF는 0.8로 corr이 높았다.
+
+    GrLivArea : Above ground living area square feet
+    GarageCars : Size of garage in car capacity
+    GarageArea : Size of garege in square feet
+    TotalBsmtSF : Total square feet of basement area
+    X1stFlrSF와 : First Floor square feet
+
+    GarageYrBlt : Year garage was built
+    YearBuilt : Original construction date
+    TotRmsAbvGrd : Total rooms above grade (not include bathroom)
 
 
-**OverallQual**
-```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice))+
-        geom_point(col='deepskyblue3') + labs(x='Overall Quality') +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
-```
-
-Overall Quality가 증가할수록 SalePrice가 점점 증가하는 꼴을 볼 수 있다.  
 
 **GrLivArea**
 ```{r}
@@ -668,22 +705,201 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
 all[c(524, 1299),c("SalePrice", "GrLivArea", "OverallQual")] #train data
 ```
 
-전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다. 이 두 값은 뒤에서 outlier로 제외시켰다.
+전체적인 퀄리티도 10으로 가장 높은 점수를 형성하지만, SalePrice는 낮다.
+
+**GarageCars, GarageArea**
+```{r}
+g1 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=GarageCars))+
+        geom_bar(fill='deepskyblue3', stat="count") 
+g2 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=GarageArea))+
+        geom_density() 
+grid.arrange(g1, g2)
+```
+
+cor이 0.89이고 두 그래프 모양이 비슷한 모양을 가졌다. 직관적으로, 차고의 크기가 크면 차고에 수용 가능한 차 개수도 많아질 것이라고 생각하였고, 모델 fitting 과정에서 multicollinearity 발생 우려가 있기 때문에 GarageCars 변수는 분석에서 제외시켰다.
+
+```{r}
+all$GarageCars <- NULL
+```
+
+
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=GarageArea, y=SalePrice))+
+  geom_point(col="deepskyblue3") + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks=seq(0,800000, by=100000), label=comma) +
+  scale_x_continuous(breaks=seq(0,1500, by=200)) +
+  geom_text_repel(aes(label = ifelse(all$GarageArea[!is.na(all$SalePrice)]>1300, rownames(all), ''))) 
+```
+
+GarageArea와 SalePrice간 cor은 0.62였고, 그 중 GarageArea가 높은 값 (GarageArea가>1,300)을 표시하였다. 
+
+
+
+**TotalBsmtSF**
+
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotalBsmtSF, y=SalePrice))+
+  geom_point(col="deepskyblue3") + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks=seq(0,800000, by=100000), label=comma) +
+  scale_x_continuous(breaks=seq(0,6000, by=500)) +
+  geom_text_repel(aes(label = ifelse(all$TotalBsmtSF[!is.na(all$SalePrice)]>6000 , rownames(all), ''))) 
+```
+
+**X1stFlrSF**
+
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=X1stFlrSF, y=SalePrice))+
+  geom_point(col="deepskyblue3") + geom_smooth(method = "lm", se=FALSE, color="black", aes(group=1)) +
+  scale_y_continuous(breaks=seq(0,800000, by=100000), label=comma) +
+  scale_x_continuous(breaks=seq(0,5000, by=500)) +
+  geom_text_repel(aes(label = ifelse(all$X1stFlrSF[!is.na(all$SalePrice)]>4000 , rownames(all), '')))
+```
+
+SalePrice와 가장 관련있는 수치형 변수 5가지를 살펴본 결과, 1299번째 값은 모두 중심에서 떨어져 높은 값으로 나타났지만 SalePrice는 상대적으로 낮은 값을 가지는 것을 알 수 있었다. 이를 outlier라고 여겨 데이터에서 제외하였다. 
+
+```{r}
+all <- all[-c(1299),]
+```
+
+**GarageYrBlt YearBuilt**: 0.85
+
+```{r}
+g1 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=GarageYrBlt, y=YearBuilt))+
+  geom_point(col="deepskyblue3")
+g2 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=GarageYrBlt, y=SalePrice))+
+  geom_point(col="deepskyblue3") + scale_y_continuous(label=comma)
+g3 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=YearBuilt, y=SalePrice))+
+  geom_point(col="deepskyblue3") + scale_y_continuous(label=comma)
+
+grid.arrange(g1,g2,g3)
+```
+
+집이 지어질 때 차고가 같이 지어진 경우 두 변수의 값이 같았다. 그래서 SalePrice 대 GarageYrBlt, SalePrice 대 YearBuilt의 모양이 매우 비슷한 것을 알 수 있었다. 따라서 GarageYrBlt 변수를 분석에서 제외시켰다.
+
+```{r}
+all$GarageYrBlt <- NULL
+```
+
+
+**GrLivArea TotRmsAbvGrd**: 0.81
+
+```{r}
+g1 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=TotRmsAbvGrd))+
+  geom_point(col="deepskyblue3") 
+
+g2 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
+  geom_point(col="deepskyblue3") + scale_y_continuous(label=comma) 
+
+g3 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotRmsAbvGrd, y=SalePrice))+
+  geom_point(col="deepskyblue3") + scale_y_continuous(label=comma)
+
+grid.arrange(g1,g2,g3)
+```
+
+집의 크기(GrLivArea)와 방 개수(TotRmsAbvGrd)에 대한 산점도에서 상관관계가 매우 높은것으로 나타났고, 이에 SalePrice를 예측할 때 다중 공선성이 발생할 수 있을것 같아 SalePrice와의 상관관계가 더 낮은 TotRmsAbvGrd 변수를 제외시켰다.
+
+```{r}
+all$TotRmsAbvGrd <- NULL
+```
+
+
+**X1stFlrSF TotalBsmtSF**: 0.8
+
+```{r}
+g1 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=X1stFlrSF, y=TotalBsmtSF))+
+  geom_point(col="deepskyblue3") 
+
+g2 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=X1stFlrSF, y=SalePrice))+
+  geom_point(col="deepskyblue3") + scale_y_continuous(label=comma) 
+
+g3 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=TotalBsmtSF, y=SalePrice))+
+  geom_point(col="deepskyblue3") + scale_y_continuous(label=comma)
+
+grid.arrange(g1,g2,g3)
+```
+
+X1stFlrSF와 TotalBsmtSF 또한 cor이 0.8로 매우 관련 있었으므로 SalePrice 와의 correlation이 그나마 낮은 TotalBsmtSF를 분석에서 제외시켰다.
+
+```{r}
+all$TotalBsmtSF <- NULL
+```
 
 
 ### character variables
- 
-
-
-# preparing data step
-## outliers
 
 ```{r}
-all <- all[-c(524,1299),]
+chrvar
 ```
+
+chrvar에 있는 변수들과 SalePrice간 관계가 어떤 변수가 가장 높은지 알아보기 위해 rough한 randomforest를 시행하였다. 변수 중요도를 토대로 가장 관계가 있는 변수들이 무엇인지 추려보면, 
+
+```{r}
+#roughrf <- train(SalePrice~., data=all[!is.na(all$SalePrice),c(chrvar,"SalePrice")], tuneGrid=grid, method="rf")
+#varImp(roughrf)
+#plot(varImp(roughrf))
+set.seed(555)
+all_fac=all[!is.na(all$SalePrice),chrvar] %>% mutate_if(is.character, as.factor)
+roughrf <- randomForest(x=all_fac, y=all$SalePrice[!is.na(all$SalePrice)], ntree=100, importance=T)
+imp <-importance(roughrf)
+impdf <- data.frame(var=row.names(imp), MSE=imp[,1])
+impdf <- impdf[order(impdf$MSE, decreasing = T),]
+
+```
+
+```{r}
+ggplot(impdf[1:20,], aes(x=reorder(var, MSE), y=MSE, fill=MSE)) + geom_bar(stat="identity") +
+  coord_flip()
+```
+
+변수 중요도를 보면 MSSubClass, OverallQual, NEighbrohood 등 순으로 SalePrice에 영향이 많은 것으로 나타났다. 
+
+    MSSubClass: Identifies the type of dwelling involved in the sale
+    OverallQual: Overall QUality
+    Neighborhood: Physical locations within Ames city limits
+
+**MSSubClass**
+
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(MSSubClass), y=SalePrice))+
+        geom_boxplot(col='deepskyblue3') +
+        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
+```
+
+MSSubClass는 판매와 관련한 주택유형 식별 코드로, 60이 가장 높았다. 60은 2-story 1946 & newer을 나타낸다. 전반적으로 1946년 이상되거나, story가 높을수록 SalePrice 가격이 높았다.
+
+
+**OverallQual**
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice))+
+        geom_point(col='deepskyblue3') +
+        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma)
+```
+
+Overall Quality가 증가할수록 SalePrice가 점점 증가하는 꼴을 볼 수 있다.  
+
+**Neighborhood**
+
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(Neighborhood), y=SalePrice))+
+        geom_histogram(fill='deepskyblue3', stat='summary', fun.y='median') +
+        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+
+Neighborhood에 따라 SalePrice 값이 많이 다른 것을 알 수 있었다.
+
+최종적인 데이터는 이상치가 1개 제외되고, 변수가 4개 제외되었다.
+
+```{r}
+dim(all)
+```
+
+# preparing data step
 
 ## normalizing 
 ```{r}
+numvar <- names(all[,sapply(all,is.numeric)])
 Normalizing <- preProcess(all[!is.na(all$SalePrice),numvar[c(which(numvar!="SalePrice"))]], method=c("center", "scale")) # calculating with train data wihtout "SalePrice" variable
 print(Normalizing)
 
@@ -715,6 +931,7 @@ dim(dummies)
 ```
 
 ## combining all variables
+
 ```{r}
 all2 <- cbind(normnumerics,all[,!(names(all) %in% names(normnumerics))]) #for caret::train - gbm 
 dim(all2) # no one-hot encoding
@@ -724,6 +941,9 @@ dim(all)
 ```
 
 ## logarithm target variable
+
+SalePrice는 right-skewed된 분포를 띄고 있었으므로 log변환을 통해 normal하게 만들어주었다. qqplot을 보면 전보다 더 normal하게 바뀌었음을 알 수 있었고 skewness도 0.12로 낮게 나타났다.
+
 ```{r}
 skewness(all[!is.na(all$SalePrice),]$SalePrice)
 qqnorm(all$SalePrice)
@@ -741,91 +961,85 @@ qqline(all$SalePrice)
 
 # modeling step
 ```{r}
-set.seed(191102)
+set.seed(555)
 dim(all)
 
 train1 <- all[!is.na(all$SalePrice),]
 test1 <- all[is.na(all$SalePrice),]
 
-idx <- createDataPartition(y=train1$SalePrice, p=0.7, list=F)
-train0 <- train1[idx,]
-validation0 <- train1[-idx,] #hold-out
+#idx <- createDataPartition(y=train1$SalePrice, p=0.7, list=F)
+#train0 <- train1[idx,]
+#validation0 <- train1[-idx,] #hold-out
 
 dim(train1)
 dim(test1)
-dim(train0)
-dim(validation0)
+#dim(train0)
+#dim(validation0)
 ```
 
 
 
 
-## spliting validation set for estimating test MSE (validation model)
+<!-- ## spliting validation set for estimating test MSE (validation model) -->
 
-### lasso
+<!-- ### lasso -->
 
-```{r}
-control <- trainControl(method="cv", number=10)
-lassogrid <- expand.grid(
-  alpha=1, 
-  lambda=seq(0.001, 0.1, by=0.0005)
-) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate
-```
+<!-- ```{r} -->
+<!-- control <- trainControl(method="cv", number=10) -->
+<!-- lassogrid <- expand.grid( -->
+<!--   alpha=1,  -->
+<!--   lambda=seq(0.001, 0.1, by=0.0005) -->
+<!-- ) # alpha=1; lasso (alpha=0; ridge) / lambda; training rate -->
+<!-- ``` -->
 
-```{r}
+<!-- ```{r} -->
 
-# caret::train()
-lasso_model0 <- train(SalePrice~., data=train0, method = "glmnet", trControl=control, tuneGrid=lassogrid)
-lasso_model0$bestTune
+<!-- # caret::train() -->
+<!-- lasso_model0 <- train(SalePrice~., data=train0, method = "glmnet", trControl=control, tuneGrid=lassogrid) -->
+<!-- lasso_model0$bestTune -->
 
-preds_lasso0 <- predict(lasso_model0, validation0)
-head(exp(preds_lasso0))
-```
+<!-- preds_lasso0 <- predict(lasso_model0, validation0) -->
+<!-- head(exp(preds_lasso0)) -->
+<!-- ``` -->
 
-```{r}
-rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3)
-```
-
-
-```{r}
-# glmnet::cv.glmnet()
-# data.matrix : dataframe to matrix // as.matrix : data.table to matrix
-lasso_model0 <- cv.glmnet(data.matrix(train0[,-which(names(all)=="SalePrice")]), train0[,which(names(all)=="SalePrice")])
-lasso_model0$lambda.min
-
-preds_lasso0 <- predict(lasso_model0, newx = data.matrix(validation0[,-which(names(all)=="SalePrice")]), s="lambda.min")
-head(exp(preds_lasso0))
-```
-
-```{r}
-rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3)
-```
-
-### randomforest
-caret package를 사용하였다.
-```{r}
-rfgrid <- expand.grid(
-  mtry=sqrt(ncol(train0))
-)
-```
-
-```{r}
-rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid)
-rf_model0$bestTune
-
-preds_rf0 <- predict(rf_model0, validation0)
-head(exp(preds_rf0))
-```
-
-```{r}
-rmse(validation0$SalePrice, preds_rf0)
-```
+<!-- ```{r} -->
+<!-- rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3) -->
+<!-- ``` -->
 
 
+<!-- ```{r} -->
+<!-- # glmnet::cv.glmnet() -->
+<!-- # data.matrix : dataframe to matrix // as.matrix : data.table to matrix -->
+<!-- lasso_model0 <- cv.glmnet(data.matrix(train0[,-which(names(all)=="SalePrice")]), train0[,which(names(all)=="SalePrice")]) -->
+<!-- lasso_model0$lambda.min -->
 
-### gradient boosting
+<!-- preds_lasso0 <- predict(lasso_model0, newx = data.matrix(validation0[,-which(names(all)=="SalePrice")]), s="lambda.min") -->
+<!-- head(exp(preds_lasso0)) -->
+<!-- ``` -->
 
+<!-- ```{r} -->
+<!-- rmse(validation0$SalePrice, preds_lasso0) #estimated test mse (train*0.3) -->
+<!-- ``` -->
 
+<!-- ### randomforest -->
+<!-- caret package를 사용하였다. -->
+<!-- ```{r} -->
+<!-- rfgrid <- expand.grid( -->
+<!--   mtry=sqrt(ncol(train0)) -->
+<!-- ) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid) -->
+<!-- rf_model0$bestTune -->
+
+<!-- preds_rf0 <- predict(rf_model0, validation0) -->
+<!-- head(exp(preds_rf0)) -->
+<!-- ``` -->
+
+<!-- ```{r} -->
+<!-- rmse(validation0$SalePrice, preds_rf0) -->
+<!-- ``` -->
 
 
 ## predicting house price in test set (final model) 
@@ -858,6 +1072,13 @@ head(preds_lasso1)
 #head(exp(preds_lasso))
 ```
 
+```{r}
+Implasso <- varImp(lasso_model1)
+selected <- length(which(Implasso$importance$Overall!=0))
+notselected <- length(which(Implasso$importance$Overall==0))
+
+cat('There are', selected, 'variables in lasso model, and did not selected', notselected, 'variables.')
+```
 
 
 ### randomforest
@@ -876,6 +1097,11 @@ preds_rf1 <- predict(rf_model1, test1)
 preds_rf1 <- exp(preds_rf1)
 head(preds_rf1)
 ```
+
+```{r}
+varImp(rf_model1)
+```
+
 
 ### gradient boost
 
@@ -903,10 +1129,11 @@ gbgrid <- expand.grid(shrinkage=c(0.01,0.05, 0.1),
 
 
 ```{r}
+# to find best tune parameters
 system.time(for(i in 1:nrow(gbgrid)) {
   
   # reproducibility
-  set.seed(123)
+  set.seed(555)
   
   # train model
   gb_model <- gbm(SalePrice~., data=train1, n.trees=5000,
@@ -924,8 +1151,10 @@ gbgrid %>%
   head(10)
 ```
 
+shrinkage는 0.01, n.minobsinnode는 5, interaction.depth는 3, n.trees는 4964일 때 가장 최소 MSE를 가졌다. 따라서 모형을 다시 적합시키면
+
 ```{r}
-gb_model1 <- gbm(SalePrice~., data=train1, n.trees=5000, 
+gb_model1 <- gbm(SalePrice~., data=train1, n.trees=4964, 
                  shrinkage=0.01,
                  n.minobsinnode=5,
                  interaction.depth=3, distribution = "gaussian", cv.folds = 5)
@@ -938,22 +1167,36 @@ head(preds_gb1)
 
 
 # final submission step
+lasso, randomforest, gbm 세 모델의 예측값의 평균을 취해 최종 예측값으로 계산하였다.
 
 ```{r}
-preds_final <- mean(preds_lasso1, preds_rf1, preds_gb1)
+preds_final <- (preds_lasso1+ preds_rf1+ preds_gb1)/3
 sub1 <- data.frame(Id = testID, SalePrice = preds_final)
 colnames(sub1) <- c("Id","SalePrice")
 head(sub1)
 ```
 
+```{r}
+sub2 <- data.frame(Id = testID, SalePrice = preds_lasso1)
+colnames(sub2) <- c("Id","SalePrice")
+sub3 <- data.frame(Id = testID, SalePrice = preds_rf1)
+colnames(sub3) <- c("Id","SalePrice")
+sub4 <- data.frame(Id = testID, SalePrice = preds_gb1)
+colnames(sub4) <- c("Id","SalePrice")
+```
+
 
 ```{r}
 write.csv(sub1, file="submission.csv", row.names = F)
+write.csv(sub2, file="submission2.csv", row.names = F) #LASSO 
+write.csv(sub3, file="submission3.csv", row.names = F) #RF 
+write.csv(sub4, file="submission4.csv", row.names = F) #GBM 
 ```
 
-seed : 191102
-200130 - first (lasso/ no normalizing): validation rmse : 0.115594, scroe 0.12724
-200131 - second(lasso / normalizing) : validation rmse : 0.1217173, score 0.12423
-200131 - third(lasso + rf / not weighted) : score 
+seed : 555
+               final   / lasso   / rf      / gbm
+200207 score : 0.13790 / 0.14084 / 0.15367 / 0.13927
+
+
 
   
