@@ -67,18 +67,6 @@ skim(all)
 dim(all)
 ```
 
-```{r}
-names(all[,grep("Garage",names(all))])
-names(all[,grep("Bsmt",names(all))])
-names(all[,grep("Bath",names(all))])
-names(all[,grep("Pool",names(all))])
-names(all[,grep("Lot",names(all))])
-names(all[,grep("Exter",names(all))])
-names(all[,grep("Fire",names(all))])
-names(all[,grep("Flr",names(all))])
-names(all[,grep("Porch",names(all))])
-```
-
 
 # Exploring data analysis step 
 ## target variable : SalePrice
@@ -161,9 +149,9 @@ all[all$PoolArea>0 & all$PoolQC=="None", c("PoolArea","PoolQC")]
 
 
 ```{r}
-all$PoolQC[2421] <- 0 
-all$PoolQC[2504] <- 0 
-all$PoolQC[2600] <- 0 
+all$PoolArea[2421] <- 0 
+all$PoolArea[2504] <- 0 
+all$PoolArea[2600] <- 0 
 ```
  
 ### Miscellaneous features
@@ -175,10 +163,11 @@ all$MiscFeature[is.na(all$MiscFeature)] <- 'None'
 
 ggplot(all[!is.na(all$SalePrice),], aes(x=MiscFeature, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='deepskyblue3') +
-  scale_y_continuous(breaks = seq(0,800000, by=50000), labels = scales::comma) +
+  scale_y_continuous(breaks = seq(0,300000, by=50000), labels = scales::comma) +
   geom_label(stat="count", aes(label=..count.., y=..count..))
 
 ```
+
 부대시설이 있다고 해서 SalePrice에 차이가 극명하게 드러나지 않았다. 하지만 테니스 코트가 있는 집의 경우 SalePrice 값이 현저히 높은것으로 나타났다.
 
 ### Alley
@@ -207,6 +196,7 @@ all$Fence[is.na(all$Fence)] <- 'None'
 ggplot(all[!is.na(all$SalePrice),], aes(x=Fence, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='deepskyblue3')
 ```
+
 울타리 퀄리티가 좋을수록 SalePrice가 약간 높아지는 경향이 있지만, None인 변수가 가장 높은 값을 가진 것으로 보아 Fence는 SalePrice에 영향도가 낮을 것이라고 예상하였다.
 
 ### Fireplace
@@ -222,6 +212,7 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=FireplaceQu, y=SalePrice)) +
   geom_bar(stat='summary', fun.y='median', fill='deepskyblue3') +
   scale_y_continuous(breaks=seq(0, 400000, by=50000), labels=comma)
 ```
+
 벽난로는 퀄리티가 증가할수록 SalePrice가 증가하는 경향을 가지는 것을 알 수 있었다.
 
 
@@ -229,8 +220,6 @@ ggplot(all[!is.na(all$SalePrice),], aes(x=FireplaceQu, y=SalePrice)) +
 
 LotFrontage는 집 앞에 연결된 거리의 크기를 나타내는데, 486개의 결측은 근처 주요 건물(Physical location)을 나타내는 Neighborhood 변수와 관련이 있어 보였다. 각 Neighborhood의 범주에 따라 LotFrontage의 중앙값을 살펴보았다. LotFrontage가 조금 right-skewed된 경향이 있어 중앙값을 사용하였다.
 ```{r}
-#table(all$LotFrontage, useNA = "always")
-
 ggplot(all, aes(x=LotFrontage)) +
   geom_histogram(fill='deepskyblue3', binwidth = 4) +
   scale_x_continuous(breaks=seq(0,320,by=20))
@@ -243,6 +232,7 @@ ggplot(all[!is.na(all$LotFrontage),], aes(x=as.factor(Neighborhood), y=LotFronta
         geom_bar(stat='summary', fun.y = "median", fill='deepskyblue3') +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
 Neighborhood의 범주 중 LotFrontage가 높은 곳의 중앙값은 약 90에 가까웠고 (NridgHt) 낮은 곳의 중앙값은 약 22였다 (BrDale). 따라서 Neighborhood의 각 범주에서의 LotFrontage의 중앙값으로 결측을 보정하였다.
 
 ```{r}
@@ -274,13 +264,14 @@ nrow(all)
 c(length(which(all$YearBuilt==all$YearRemodAdd)), length(which(all$YearBuilt==all$YearRemodAdd))/nrow(all))
 c(length(which(all$YearBuilt==all$GarageYrBlt)), length(which(all$YearBuilt==all$GarageYrBlt))/nrow(all))
 ```
+
 전체 2919중 집이 지어진 연도와 리모델링 연도가 같은 데이터는 1560개로 전체 53%이고 (즉 리모델링하지 않은 집이 53%), 집을 지을때 차고를 같이 지은 집은 2216개로 전체 약 75%였다. 집이 지어질 때 차고도 같이 짓는 경우가 많고, 집을 리모델링 할때 차고도 리모델링 하는 경우는 적다고 판단하여 159개의 GarageYrBlt 결측치는 집을 지을 때 차고도 같이 지었다고, 즉 GarageYrBlt==YearBuilt로 imputation 하였다.
 
 ```{r}
 all$GarageYrBlt[is.na(all$GarageYrBlt)] <- all$YearBuilt[is.na(all$GarageYrBlt)]
 ```
 
-** GarageType, GarageFinish, GarageCond, GarageQual, GarageCars, GarageArea **
+**GarageType, GarageFinish, GarageCond, GarageQual, GarageCars, GarageArea**
 
 다음으로, GarageType은 157개의 결측인데, 다른 159개의 결측치와 다른 2개가 무엇인지 데이터 탐색해보았다.
 
@@ -291,6 +282,7 @@ length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageC
 all[!is.na(all$GarageType) & is.na(all$GarageFinish), 
     c('GarageCars', 'GarageArea', 'GarageType', 'GarageCond', 'GarageQual', 'GarageFinish')]
 ```
+
 159개 중 157개는 모두 NA 였다.
 
 
@@ -317,6 +309,7 @@ length(which(is.na(all$GarageType) & is.na(all$GarageFinish) & is.na(all$GarageC
 
 NAs(all[,grep("^Garage",names(all))])
 ```
+
 나머지 157+1개에 대해서는 차고가 없는 것으로 보정하였다.
 차고가 없음은 NA에서 No Garage, None 으로 바꿔주었다.
 
@@ -606,7 +599,7 @@ all$Newhouse <- as.factor(all$Newhouse)
 
 
 
-## variable analysis
+## variable explanation
 
 아래 5개 변수는 factor로 변형해준다.
 ```{r}
@@ -747,8 +740,6 @@ qqline(all$SalePrice)
 
 
 # modeling step
-## spliting validation set for estimating test MSE (validation model)
-
 ```{r}
 set.seed(191102)
 dim(all)
@@ -769,6 +760,7 @@ dim(validation0)
 
 
 
+## spliting validation set for estimating test MSE (validation model)
 
 ### lasso
 
@@ -781,6 +773,7 @@ lassogrid <- expand.grid(
 ```
 
 ```{r}
+
 # caret::train()
 lasso_model0 <- train(SalePrice~., data=train0, method = "glmnet", trControl=control, tuneGrid=lassogrid)
 lasso_model0$bestTune
@@ -817,19 +810,20 @@ rfgrid <- expand.grid(
 ```
 
 ```{r}
-#rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid)
-#rf_model0$bestTune
+rf_model0 <- train(SalePrice~., data=train0, method="rf", trcontrol=control, tuneGrid=rfgrid)
+rf_model0$bestTune
 
-#preds_rf0 <- predict(rf_model0, validation0)
-#head(exp(preds_rf0))
+preds_rf0 <- predict(rf_model0, validation0)
+head(exp(preds_rf0))
 ```
 
 ```{r}
-#rmse(validation0$SalePrice, preds_rf0)
+rmse(validation0$SalePrice, preds_rf0)
 ```
 
 
 
+### gradient boosting
 
 
 
@@ -864,18 +858,13 @@ head(preds_lasso1)
 #head(exp(preds_lasso))
 ```
 
-```{r}
-preds_lasso1 <- exp(preds_lasso1)
-sub_lasso <- data.frame(Id = testID, SalePrice = preds)
-colnames(sub_lasso) <- c("Id","SalePrice")
-head(sub_lasso)
-```
+
 
 ### randomforest
 
 ```{r}
 rfgrid <- expand.grid(
-  mtry=sqrt(ncol(train1))
+  mtry=c(ncol(train1)/3,sqrt(ncol(train1)))
 )
 ```
 
@@ -888,76 +877,75 @@ preds_rf1 <- exp(preds_rf1)
 head(preds_rf1)
 ```
 
-### gradient boost 
+### gradient boost
 
 ```{r}
-train2 <- all2[!is.na(all2$SalePrice),] #NOT ONT-HOT ENCODING
-test2 <- all2[is.na(all2$SalePrice),]
-dim(train2)
-dim(test2)
+#train2 <- all2[!is.na(all2$SalePrice),] #NOT ONT-HOT ENCODING
+#test2 <- all2[is.na(all2$SalePrice),]
+#dim(train2)
+#dim(test2)
 ```
 
 
 ```{r}
-gbgrid <- expand.grid(n.trees=(2:10)*50,
-                      shrinkage=c(0.01,0.05),
+gbgrid <- expand.grid(shrinkage=c(0.01,0.05, 0.1),
                       interaction.depth=c(2,3),
-                      n.minobsinnode=10
-                      )
-metric <- "RMSE"
+                      n.minobsinnode=c(5,10),
+                      optimaltrees=0,
+                      minRMSE=0
+                       )
 ```
 
 ```{r}
-gb_model1 <- train(SalePrice~., data=train2, distribution="gaussian", method="gbm", trContol=control, tuneGrid=gbgrid, metric=metric, allowParallel=TRUE )
+# gb_model1 <- train(SalePrice~., data=train2, distribution="gaussian", method="gbm", trContol=control, tuneGrid=gbgrid, metric="RMSE", allowParallel=TRUE )
+```
+
+
+
+```{r}
+system.time(for(i in 1:nrow(gbgrid)) {
+  
+  # reproducibility
+  set.seed(123)
+  
+  # train model
+  gb_model <- gbm(SalePrice~., data=train1, n.trees=5000,
+                      shrinkage=gbgrid$shrinkage[i],
+                      n.minobsinnode=gbgrid$n.minobsinnode[i],
+                      interaction.depth=gbgrid$interaction.depth[i], distribution = "gaussian", cv.folds = 5)
+  
+  # add min training error and trees to grid
+  gbgrid$optimaltrees[i] <- which.min(gb_model$cv.error)
+  gbgrid$minRMSE[i] <- sqrt(min(gb_model$cv.error))
+})
+
+gbgrid %>%
+  arrange(minRMSE) %>%
+  head(10)
 ```
 
 ```{r}
-gb_model1 <- gbm(SalePrice~., data=train1, n.trees=100,
-                      shrinkage=0.1,
-                      n.minobsinnode=c(10),
-                      interaction.depth=3, distribution = "gaussian", cv.folds = 10)
+gb_model1 <- gbm(SalePrice~., data=train1, n.trees=5000, 
+                 shrinkage=0.01,
+                 n.minobsinnode=5,
+                 interaction.depth=3, distribution = "gaussian", cv.folds = 5)
+
+preds_gb1 <- predict(gb_model1, test1)
+preds_gb1 <- exp(preds_gb1)
+head(preds_gb1)
 ```
-
-```{r}
-
-gb_model1$bestTune
-```
-
-
-
-### xgboost
-
-```{r}
-xgbgrid <- expand.grid(nrounds=750,
-                       eta=c(0.1,0.005,0.001),
-                       max_depth=c(4,6,8),
-                       colsample_bytree=c(0.1,10),
-                       min_child_weight=2,
-                       subsample=c(0,0.2,0.4,0.6),
-                       gamma=0.01)
-```
-
-```{r}
-xgb_model1 <- train(SalePrice~., data=train1, method="xgbTree", trContol=control, tuneGrid=xgbgrid, metric="RMSE", nthread=3)
-```
-
-```{r}
-xgb_model1$bestTune
-```
-
-
-### average preds  
-```{r}
-preds <- (preds_lasso1+preds_rf1)/2
-sub1 <- data.frame(Id = testID, SalePrice = preds)
-colnames(sub1) <- c("Id","SalePrice")
-head(sub1)
-```
-
 
 
 
 # final submission step
+
+```{r}
+preds_final <- mean(preds_lasso1, preds_rf1, preds_gb1)
+sub1 <- data.frame(Id = testID, SalePrice = preds_final)
+colnames(sub1) <- c("Id","SalePrice")
+head(sub1)
+```
+
 
 ```{r}
 write.csv(sub1, file="submission.csv", row.names = F)
