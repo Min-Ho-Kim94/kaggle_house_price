@@ -1,16 +1,16 @@
 ---
 title: "House Prices: Advanced Regression Techniques"
 output:
+  word_document:
+    toc: yes
+    toc_depth: '3'
+  pdf_document:
+    toc: yes
+    toc_depth: '3'
   html_document:
     number_sections: yes
     toc: yes
     toc_depth: 3
-  pdf_document:
-    toc: yes
-    toc_depth: '3'
-  word_document:
-    toc: yes
-    toc_depth: '3'
 ---
 
 ```{r setup, include=FALSE}
@@ -774,7 +774,7 @@ g3 <- ggplot(data=all[!is.na(all$SalePrice),], aes(x=YearBuilt, y=SalePrice))+
 grid.arrange(g1,g2,g3)
 ```
 
-집이 지어질 때 차고가 같이 지어진 경우 두 변수의 값이 같았다. 그래서 SalePrice 대 GarageYrBlt, SalePrice 대 YearBuilt의 모양이 매우 비슷한 것을 알 수 있었다. 따라서 GarageYrBlt 변수를 분석에서 제외시켰다.
+집이 지어질 때 차고가 같이 지어진 경우 두 변수의 값이 같았다. 그래서 SalePrice 대 GarageYrBlt, SalePrice 대 YearBuilt의 모양이 매우 비슷한 것을 알 수 있었다. 또한 차고가 없는 경우 (No Garage)에도 GarageYrBlt 값은 존재하는 경우가 있었다. 따라서 GarageYrBlt 변수를 분석에서 제외시켰다.
 
 ```{r}
 all$GarageYrBlt <- NULL
@@ -851,11 +851,25 @@ ggplot(impdf[1:20,], aes(x=reorder(var, MSE), y=MSE, fill=MSE)) + geom_bar(stat=
   coord_flip()
 ```
 
-변수 중요도를 보면 MSSubClass, OverallQual, NEighbrohood 등 순으로 SalePrice에 영향이 많은 것으로 나타났다. 
+MSEs는 %IncMSE로 전체 MSE0에서 해당 변수가 포함된 트리의 MSE1를 계산해 (MSE1-MSE0)/MSE0*100을 계산.
+%IncMSE가 높을수록 col1이 미치는 영향이 크다 > 중요한 변수이다. 나타냄.
+변수 중요도를 보면 Neighbrohood, MSSubClass, OverallQual 등 순으로 SalePrice에 영향이 많은 것으로 나타났다. 
 
     MSSubClass: Identifies the type of dwelling involved in the sale
     OverallQual: Overall QUality
     Neighborhood: Physical locations within Ames city limits
+
+**Neighborhood**
+
+```{r}
+ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(Neighborhood), y=SalePrice))+
+        geom_histogram(fill='deepskyblue3', stat='summary', fun.y='median') +
+        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
+  theme(axis.text.x=element_text(angle=45, hjust=1))
+```
+
+
+Neighborhood에 따라 SalePrice 값이 많이 다른 것을 알 수 있었다.
 
 **MSSubClass**
 
@@ -869,6 +883,7 @@ MSSubClass는 판매와 관련한 주택유형 식별 코드로, 60이 가장 �
 
 
 **OverallQual**
+
 ```{r}
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice))+
         geom_point(col='deepskyblue3') +
@@ -877,17 +892,7 @@ ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(OverallQual), y=SalePrice)
 
 Overall Quality가 증가할수록 SalePrice가 점점 증가하는 꼴을 볼 수 있다.  
 
-**Neighborhood**
 
-```{r}
-ggplot(data=all[!is.na(all$SalePrice),], aes(x=factor(Neighborhood), y=SalePrice))+
-        geom_histogram(fill='deepskyblue3', stat='summary', fun.y='median') +
-        scale_y_continuous(breaks= seq(0, 800000, by=100000), labels = comma) +
-  theme(axis.text.x=element_text(angle=45, hjust=1))
-```
-
-
-Neighborhood에 따라 SalePrice 값이 많이 다른 것을 알 수 있었다.
 
 최종적인 데이터는 이상치가 1개 제외되고, 변수가 4개 제외되었다.
 
@@ -1075,11 +1080,10 @@ head(preds_lasso1)
 ```{r}
 Implasso <- varImp(lasso_model1)
 selected <- length(which(Implasso$importance$Overall!=0))
-notselected <- length(which(Implasso$importance$Overall==0))
+notselected <- length(names(train1[,Implasso$importance$Overall==0]))
 
 cat('There are', selected, 'variables in lasso model, and did not selected', notselected, 'variables.')
 ```
-
 
 ### randomforest
 
@@ -1151,11 +1155,11 @@ gbgrid %>%
   head(10)
 ```
 
-shrinkage는 0.01, n.minobsinnode는 5, interaction.depth는 3, n.trees는 4964일 때 가장 최소 MSE를 가졌다. 따라서 모형을 다시 적합시키면
+shrinkage는 0.05, n.minobsinnode는 5, interaction.depth는 3, n.trees는 4964일 때 가장 최소 MSE를 가졌다. 따라서 모형을 다시 적합시키면
 
 ```{r}
-gb_model1 <- gbm(SalePrice~., data=train1, n.trees=4964, 
-                 shrinkage=0.01,
+gb_model1 <- gbm(SalePrice~., data=train1, n.trees=2746, 
+                 shrinkage=0.05,
                  n.minobsinnode=5,
                  interaction.depth=3, distribution = "gaussian", cv.folds = 5)
 
@@ -1167,7 +1171,7 @@ head(preds_gb1)
 
 
 # final submission step
-lasso, randomforest, gbm 세 모델의 예측값의 평균을 취해 최종 예측값으로 계산하였다.
+lasso, randomforest, gbm 세 모델의 예측값의 평균을 취해 최종 예측값으로 계산하였다. 
 
 ```{r}
 preds_final <- (preds_lasso1+ preds_rf1+ preds_gb1)/3
@@ -1196,7 +1200,5 @@ write.csv(sub4, file="submission4.csv", row.names = F) #GBM
 seed : 555
                final   / lasso   / rf      / gbm
 200207 score : 0.13790 / 0.14084 / 0.15367 / 0.13927
-
-
 
   
