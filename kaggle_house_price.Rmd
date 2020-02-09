@@ -1155,7 +1155,7 @@ gbgrid %>%
   head(10)
 ```
 
-shrinkage는 0.05, n.minobsinnode는 5, interaction.depth는 3, n.trees는 4964일 때 가장 최소 MSE를 가졌다. 따라서 모형을 다시 적합시키면
+shrinkage는 0.05, n.minobsinnode는 5, interaction.depth는 3, n.trees는 2746일 때 가장 최소 MSE를 가졌다. 따라서 모형을 다시 적합시키면
 
 ```{r}
 gb_model1 <- gbm(SalePrice~., data=train1, n.trees=2746, 
@@ -1166,6 +1166,15 @@ gb_model1 <- gbm(SalePrice~., data=train1, n.trees=2746,
 preds_gb1 <- predict(gb_model1, test1)
 preds_gb1 <- exp(preds_gb1)
 head(preds_gb1)
+```
+
+가장 성능이 좋았던 gbm의 변수 중요도를 살펴보면
+```{r}
+aa<-as.data.frame(summary(gb_model1, plotit=F))
+head(aa)
+
+ggplot(aa[1:20,], aes(x=reorder(var, rel.inf), y=rel.inf, fill=rel.inf)) + geom_bar(stat="identity") +
+  coord_flip()
 ```
 
 
