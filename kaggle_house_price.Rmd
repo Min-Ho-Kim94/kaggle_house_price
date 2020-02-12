@@ -1208,6 +1208,6 @@ write.csv(sub4, file="submission4.csv", row.names = F) #GBM
 
 seed : 555
                final   / lasso   / rf      / gbm
-200207 score : 0.13790 / 0.14084 / 0.15367 / 0.13927
+200207 score : 0.13790 / 0.14084 / 0.15367 / 0.13927 
 
   
