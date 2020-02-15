@@ -1179,7 +1179,7 @@ ggplot(aa[1:20,], aes(x=reorder(var, rel.inf), y=rel.inf, fill=rel.inf)) + geom_
 
 
 
-# final submission step
+# final submission step 
 lasso, randomforest, gbm 세 모델의 예측값의 평균을 취해 최종 예측값으로 계산하였다. 
 
 ```{r}
