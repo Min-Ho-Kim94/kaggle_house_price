@@ -623,7 +623,7 @@ all$Newhouse <- as.factor(all$Newhouse)
 ggplot(data=all[!is.na(all$SalePrice),], aes(x=Newhouse, y=SalePrice)) +
   geom_point(col="deepskyblue3") + scale_y_continuous(breaks=seq(0, 900000, by=100000), labels=comma)
 
-mean(all$SalePrice[!all$Newhouse=="0"], na.rm=T)
+mean(all$SalePrice[!all$Newhouse=="0"], na.rm=T) 
 mean(all$SalePrice[!all$Newhouse=="1"], na.rm=T)
 ```
 
